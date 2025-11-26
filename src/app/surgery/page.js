@@ -1,0 +1,232 @@
+"use client";
+
+import { useState } from 'react';
+import MatchSearchAutocomplete from '@/components/MatchSearchAutocomplete';
+import PredictionTypeSelector from '@/components/PredictionTypeSelector';
+import { formatMatchName } from '@/lib/fixtures';
+
+export default function SurgeryPage() {
+  const [selectedFixture, setSelectedFixture] = useState(null);
+  const [selectedPrediction, setSelectedPrediction] = useState(null);
+  const [formData, setFormData] = useState({
+    confidence: 5,
+    analysis: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!selectedFixture || !selectedPrediction) {
+      alert('Lütfen maç ve tahmin seçin');
+      return;
+    }
+
+    const surgeryData = {
+      match: formatMatchName(selectedFixture),
+      league: selectedFixture.league,
+      pick: selectedPrediction.type,
+      odds: selectedPrediction.odds,
+      confidence: formData.confidence,
+      analysis: formData.analysis
+    };
+
+    console.log('Surgery started:', surgeryData);
+    alert('Ameliyat başarılı! (Demo mode - gerçekte backend\'e kaydedilecek)');
+
+    // Reset form
+    setSelectedFixture(null);
+    setSelectedPrediction(null);
+    setFormData({ confidence: 5, analysis: '' });
+  };
+
+  return (
+    <div className="surgery-container">
+      <div className="page-header">
+        <h1>Ameliyathane 🔪</h1>
+        <p className="subtitle">Hastayı masaya yatırın ve analizinizi yapın.</p>
+      </div>
+
+      <div className="surgery-card">
+        <form onSubmit={handleSubmit} className="surgery-form">
+          {/* Match Search */}
+          <div className="form-group">
+            <label>Maç Seçimi</label>
+            <MatchSearchAutocomplete
+              onSelectMatch={setSelectedFixture}
+              selectedMatch={selectedFixture}
+            />
+            {selectedFixture && (
+              <div className="selected-match-info">
+                <span className="league-tag">{selectedFixture.league}</span>
+                <span className="match-tag">{formatMatchName(selectedFixture)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Prediction Type Selector */}
+          <div className="form-group">
+            <PredictionTypeSelector
+              selectedFixture={selectedFixture}
+              onSelectPrediction={setSelectedPrediction}
+            />
+          </div>
+
+          {/* Confidence Level */}
+          <div className="form-group">
+            <label htmlFor="confidence">Güven Seviyesi (1-10)</label>
+            <div className="range-container">
+              <input
+                type="range"
+                id="confidence"
+                name="confidence"
+                min="1"
+                max="10"
+                value={formData.confidence}
+                onChange={handleChange}
+                className="range-input"
+              />
+              <span className="range-value">{formData.confidence}/10</span>
+            </div>
+          </div>
+
+          {/* Analysis Notes */}
+          <div className="form-group">
+            <label htmlFor="analysis">Analiz Notları</label>
+            <textarea
+              id="analysis"
+              name="analysis"
+              value={formData.analysis}
+              onChange={handleChange}
+              placeholder="Neden bu tahmini seçtiniz? İstatistikler, sakatlıklar..."
+              rows="5"
+              required
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            className="btn btn-primary btn-lg btn-block"
+            disabled={!selectedFixture || !selectedPrediction}
+          >
+            Ameliyatı Başlat (Paylaş)
+          </button>
+        </form>
+      </div>
+
+      <style jsx>{`
+        .surgery-container {
+          max-width: 800px;
+          margin: 0 auto;
+        }
+
+        .page-header {
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+
+        .subtitle {
+          color: #a3a3a3;
+          margin-top: 0.5rem;
+        }
+
+        .surgery-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          padding: 2rem;
+          border-radius: 1rem;
+        }
+
+        .surgery-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        label {
+          font-weight: 500;
+          color: #d4d4d4;
+        }
+
+        .selected-match-info {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .league-tag,
+        .match-tag {
+          background: var(--surface-hover);
+          padding: 0.5rem 1rem;
+          border-radius: 0.5rem;
+          font-size: 0.9rem;
+          border: 1px solid var(--border);
+        }
+
+        .league-tag {
+          color: var(--accent);
+          font-weight: 600;
+        }
+
+        .match-tag {
+          color: var(--primary);
+          font-weight: 600;
+        }
+
+        textarea {
+          background: var(--background);
+          border: 1px solid var(--border);
+          padding: 0.75rem;
+          border-radius: 0.5rem;
+          color: var(--foreground);
+          font-size: 1rem;
+          transition: border-color 0.2s;
+          font-family: inherit;
+          resize: vertical;
+        }
+
+        textarea:focus {
+          outline: none;
+          border-color: var(--primary);
+        }
+
+        .range-container {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .range-input {
+          flex: 1;
+          accent-color: var(--primary);
+        }
+
+        .range-value {
+          font-weight: 700;
+          color: var(--primary);
+          min-width: 3rem;
+        }
+
+        .btn-block {
+          width: 100%;
+          margin-top: 1rem;
+        }
+
+        .btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      `}</style>
+    </div>
+  );
+}
