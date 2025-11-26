@@ -1,17 +1,21 @@
 "use client";
 
 import { useState } from 'react';
+import Link from 'next/link';
 import MatchSearchAutocomplete from '@/components/MatchSearchAutocomplete';
 import PredictionTypeSelector from '@/components/PredictionTypeSelector';
 import { formatMatchName } from '@/lib/fixtures';
+import { useAuth } from '@/components/LayoutShell';
 
 export default function SurgeryPage() {
+  const { user } = useAuth();
   const [selectedFixture, setSelectedFixture] = useState(null);
   const [selectedPrediction, setSelectedPrediction] = useState(null);
   const [formData, setFormData] = useState({
     confidence: 5,
     analysis: ''
   });
+  const [showLoginPopup, setShowLoginPopup] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -19,6 +23,11 @@ export default function SurgeryPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!user) {
+      setShowLoginPopup(true);
+      return;
+    }
 
     if (!selectedFixture || !selectedPrediction) {
       alert('Lütfen maç ve tahmin seçin');
@@ -117,10 +126,25 @@ export default function SurgeryPage() {
         </form>
       </div>
 
+      {showLoginPopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <button className="close-btn" onClick={() => setShowLoginPopup(false)}>✕</button>
+            <div className="lock-icon">🔒</div>
+            <h2>Bu alanı kullanmak için giriş yapmalısınız</h2>
+            <p>Tahmin yapmak ve paylaşmak için Telegram ile giriş yapın.</p>
+            <Link href="/login" className="login-btn">
+              Giriş Yap
+            </Link>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         .surgery-container {
           max-width: 800px;
           margin: 0 auto;
+          position: relative;
         }
 
         .page-header {
@@ -225,6 +249,76 @@ export default function SurgeryPage() {
         .btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        /* Popup Styles */
+        .popup-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+          backdrop-filter: blur(5px);
+        }
+
+        .popup-content {
+          background: #0f172a;
+          padding: 2rem;
+          border-radius: 1rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          text-align: center;
+          max-width: 400px;
+          width: 90%;
+          position: relative;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .close-btn {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: none;
+          border: none;
+          color: #94a3b8;
+          font-size: 1.5rem;
+          cursor: pointer;
+        }
+
+        .lock-icon {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+        }
+
+        .popup-content h2 {
+          font-size: 1.2rem;
+          margin-bottom: 0.5rem;
+          color: #fff;
+        }
+
+        .popup-content p {
+          color: #94a3b8;
+          margin-bottom: 1.5rem;
+          font-size: 0.9rem;
+        }
+
+        .login-btn {
+          background: var(--primary);
+          color: #000;
+          padding: 0.75rem 2rem;
+          border-radius: 0.5rem;
+          font-weight: 600;
+          text-decoration: none;
+          display: inline-block;
+          transition: transform 0.2s;
+        }
+
+        .login-btn:hover {
+          transform: translateY(-2px);
         }
       `}</style>
     </div>

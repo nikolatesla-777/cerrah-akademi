@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import HeroSlider from '@/components/HeroSlider';
 import BannerAd from '@/components/BannerAd';
-import ActivePredictionsTabs from '@/components/ActivePredictionsTabs';
+import WinningPredictionsSlider from '@/components/WinningPredictionsSlider';
 
 export default function Home() {
   return (
@@ -71,8 +71,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Active Predictions Tabs */}
-      <ActivePredictionsTabs />
+      {/* Winning Predictions Section */}
+      <WinningPredictionsSlider />
 
       <style jsx>{`
         .landing-page {
