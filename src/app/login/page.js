@@ -10,12 +10,37 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [error, setError] = useState(null);
 
-  const handleTelegramAuth = (user) => {
+  const handleTelegramAuth = async (user) => {
     console.log('Telegram User:', user);
 
     if (user) {
-      // Use the login function from context to update global state immediately
-      login(user);
+      try {
+        // 1. Check subscription status
+        const res = await fetch('/api/check-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telegramId: user.id })
+        });
+
+        const data = await res.json();
+
+        if (data.isSubscribed) {
+          // 2. If subscribed, proceed with login
+          login(user);
+        } else {
+          // 3. If not subscribed, show error
+          setError(
+            <span>
+              Giriş yapabilmek için <a href="https://t.me/cerrahvip" target="_blank" className="underline font-bold">@cerrahvip</a> kanalına abone olmalısınız.
+            </span>
+          );
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        // In case of API error (e.g. missing token in dev), maybe allow login or show generic error?
+        // For now, show generic error to be safe.
+        setError('Giriş kontrolü sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+      }
     } else {
       setError('Giriş başarısız oldu.');
     }
