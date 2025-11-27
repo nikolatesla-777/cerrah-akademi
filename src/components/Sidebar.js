@@ -10,6 +10,7 @@ export default function Sidebar({ isCollapsed, toggleCollapse, isMobileOpen, clo
     { name: 'Panel', path: '/dashboard', icon: '📊' },
     { name: 'Ameliyathane', path: '/surgery', icon: '🔪' },
     { name: 'Akış', path: '/feed', icon: '📱' },
+    { name: 'Bülten', path: '/bulletin', icon: '📅' },
     { name: 'Liderlik', path: '/leaderboard', icon: '🏆' },
     { name: 'İçerik Yönetimi', path: '/admin/content', icon: '📝' },
     { name: 'Kullanıcılar', path: '/admin/users', icon: '👥' },
