@@ -2,7 +2,11 @@
 
 import Link from 'next/link';
 
+import { useAuth } from '@/components/LayoutShell';
+
 export default function DashboardPage() {
+  const { user } = useAuth();
+
   // Mock data
   const stats = {
     winRate: 78,
@@ -21,7 +25,7 @@ export default function DashboardPage() {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <div className="welcome-text">
-          <h1>Hoşgeldin, <span className="username">orancerrahi</span></h1>
+          <h1>Hoşgeldin, <span className="username">{user?.first_name || user?.username || 'Cerrah'}</span></h1>
           <p className="subtitle">Bugün kazanmaya hazır mısın?</p>
         </div>
         <Link href="/surgery" className="new-prediction-btn">

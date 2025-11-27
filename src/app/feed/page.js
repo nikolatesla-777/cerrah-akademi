@@ -96,7 +96,7 @@ export default function FeedPage() {
                     </Link>
                     <div className="user-details">
                       <Link href={user ? `/profile/${post.user}` : '#'} className={`username-link ${!user ? 'disabled-link' : ''}`}>
-                        <span className="username">{post.user}</span>
+                        <span className="username">@{post.user}</span>
                       </Link>
                       <span className="user-rank">#{post.rank || '-'} Cerrah</span>
                     </div>
