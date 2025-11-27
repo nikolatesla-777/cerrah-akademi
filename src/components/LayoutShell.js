@@ -4,108 +4,103 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import { useRouter, usePathname } from 'next/navigation';
+import { syncUser } from '@/lib/storage';
 
-// Create Auth Context
-const AuthContext = createContext(null);
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
-
-export default function LayoutShell({ children }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-
-  // Auth State
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    const checkUser = () => {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        if (!parsedUser.role) {
-          parsedUser.role = 'Çaylak';
-          if (parsedUser.username === 'kerafibey' || parsedUser.first_name === 'Admin') {
-            parsedUser.role = 'Admin';
-          }
+// ... inside LayoutShell component
+useEffect(() => {
+  const checkUser = () => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      if (!parsedUser.role) {
+        parsedUser.role = 'Çaylak';
+        // Auto-assign Admin role to specific users
+        const adminUsernames = ['maxxiim777', 'kerafibey']; // Add authorized usernames here
+        if (adminUsernames.includes(parsedUser.username) || parsedUser.first_name === 'Admin') {
+          parsedUser.role = 'Admin';
         }
-        setUser(parsedUser);
-      } else {
-        setUser(null);
       }
-      setLoading(false);
-    };
-
-    checkUser();
-
-    window.addEventListener('storage', checkUser);
-    // Custom event for same-tab login/logout updates if needed
-    window.addEventListener('auth-change', checkUser);
-
-    return () => {
-      window.removeEventListener('storage', checkUser);
-      window.removeEventListener('auth-change', checkUser);
-    };
-  }, []);
-
-  const login = (userData) => {
-    // Assign default role on login
-    const userWithRole = { ...userData, username: userData.username || 'kerafibey', role: 'Çaylak' };
-    localStorage.setItem('user', JSON.stringify(userWithRole));
-    setUser(userWithRole);
-    window.dispatchEvent(new Event('auth-change'));
-    router.push('/dashboard');
+      setUser(parsedUser);
+      // Sync to Supabase
+      syncUser(parsedUser);
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
   };
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    window.dispatchEvent(new Event('auth-change'));
-    router.push('/login');
+  checkUser();
+
+  window.addEventListener('storage', checkUser);
+  // Custom event for same-tab login/logout updates if needed
+  window.addEventListener('auth-change', checkUser);
+
+  return () => {
+    window.removeEventListener('storage', checkUser);
+    window.removeEventListener('auth-change', checkUser);
   };
+}, []);
 
-  return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {/* Mobile Header */}
-      <div className="mobile-header">
-        <button
-          className="mobile-toggle"
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-        >
-          ☰
-        </button>
-        <span className="mobile-title">Cerrah<span className="accent">Akademi</span></span>
-      </div>
+const login = (userData) => {
+  // Assign default role on login
+  let role = 'Çaylak';
+  const adminUsernames = ['maxxiim777', 'kerafibey'];
+  if (adminUsernames.includes(userData.username) || userData.first_name === 'Admin') {
+    role = 'Admin';
+  }
 
-      {/* Desktop Header (Hidden on mobile) */}
-      <div className="desktop-header-wrapper">
-        <Header user={user} logout={logout} />
-      </div>
+  const userWithRole = { ...userData, username: userData.username || 'kerafibey', role };
+  localStorage.setItem('user', JSON.stringify(userWithRole));
+  setUser(userWithRole);
+  window.dispatchEvent(new Event('auth-change'));
+  router.push('/dashboard');
+};
 
-      <div className="layout-wrapper">
-        <Sidebar
-          isCollapsed={isCollapsed}
-          toggleCollapse={() => setIsCollapsed(!isCollapsed)}
-          isMobileOpen={isMobileOpen}
-          closeMobileMenu={() => setIsMobileOpen(false)}
-          user={user}
-        />
+const logout = () => {
+  localStorage.removeItem('user');
+  setUser(null);
+  window.dispatchEvent(new Event('auth-change'));
+  router.push('/login');
+};
 
-        {/* Overlay for mobile */}
-        {isMobileOpen && (
-          <div className="mobile-overlay" onClick={() => setIsMobileOpen(false)} />
-        )}
+return (
+  <AuthContext.Provider value={{ user, login, logout, loading }}>
+    {/* Mobile Header */}
+    <div className="mobile-header">
+      <button
+        className="mobile-toggle"
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+      >
+        ☰
+      </button>
+      <span className="mobile-title">Cerrah<span className="accent">Akademi</span></span>
+    </div>
 
-        <main className={`main-content ${isCollapsed ? 'expanded' : ''}`}>
-          {children}
-        </main>
-      </div>
+    {/* Desktop Header (Hidden on mobile) */}
+    <div className="desktop-header-wrapper">
+      <Header user={user} logout={logout} />
+    </div>
 
-      <style jsx global>{`
+    <div className="layout-wrapper">
+      <Sidebar
+        isCollapsed={isCollapsed}
+        toggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        isMobileOpen={isMobileOpen}
+        closeMobileMenu={() => setIsMobileOpen(false)}
+        user={user}
+      />
+
+      {/* Overlay for mobile */}
+      {isMobileOpen && (
+        <div className="mobile-overlay" onClick={() => setIsMobileOpen(false)} />
+      )}
+
+      <main className={`main-content ${isCollapsed ? 'expanded' : ''}`}>
+        {children}
+      </main>
+    </div>
+
+    <style jsx global>{`
         .layout-wrapper {
           display: flex;
           min-height: calc(100vh - 64px);
@@ -193,6 +188,6 @@ export default function LayoutShell({ children }) {
             }
         }
       `}</style>
-    </AuthContext.Provider>
-  );
+  </AuthContext.Provider>
+);
 }

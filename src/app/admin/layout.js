@@ -11,15 +11,25 @@ export default function AdminLayout({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  // Simulated Auth Check
+  // Real Auth Check
   useEffect(() => {
-    // In a real app, check session/token here.
-    const user = { username: "orancerrahi", role: "admin" };
-
-    if (user.role !== 'admin') {
+    // Check localStorage for user
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
       router.push('/');
-    } else {
-      setAuthorized(true);
+      return;
+    }
+
+    try {
+      const user = JSON.parse(storedUser);
+      if (user.role !== 'Admin') {
+        alert('Bu alana giriş yetkiniz yok!');
+        router.push('/');
+      } else {
+        setAuthorized(true);
+      }
+    } catch (e) {
+      router.push('/');
     }
   }, [router]);
 

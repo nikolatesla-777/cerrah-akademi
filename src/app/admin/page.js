@@ -1,56 +1,45 @@
 "use client";
 
 export default function AdminDashboard() {
-    // Mock Stats
-    const stats = [
-        { label: 'Toplam Kullanıcı', value: '1,245', change: '+12%', icon: '👥', color: 'blue' },
-        { label: 'Aktif Tahminler', value: '42', change: '-5%', icon: '📝', color: 'yellow' },
-        { label: 'Toplam Gelir', value: '₺45,200', change: '+24%', icon: '💰', color: 'green' },
-        { label: 'Bekleyen Onay', value: '8', change: '⚠️', icon: '⏳', color: 'orange' },
-    ];
+  // Mock Stats
+  const stats = [
+    { label: 'Toplam Kullanıcı', value: '1,245', change: '+12%', icon: '👥', color: 'blue' },
+    { label: 'Aktif Tahminler', value: '42', change: '-5%', icon: '📝', color: 'yellow' },
+    { label: 'Toplam Gelir', value: '₺45,200', change: '+24%', icon: '💰', color: 'green' },
+    { label: 'Bekleyen Onay', value: '8', change: '⚠️', icon: '⏳', color: 'orange' },
+  ];
 
-    return (
-        <div className="admin-dashboard">
-            <h1 className="page-title">Dashboard</h1>
+  return (
+    <div className="admin-dashboard">
+      <h1 className="page-title">Dashboard</h1>
 
-            {/* Stats Grid */}
-            <div className="stats-grid">
-                {stats.map((stat, index) => (
-                    <div key={index} className={`stat-card ${stat.color}`}>
-                        <div className="stat-icon">{stat.icon}</div>
-                        <div className="stat-info">
-                            <span className="stat-label">{stat.label}</span>
-                            <div className="stat-value-row">
-                                <span className="stat-value">{stat.value}</span>
-                                <span className={`stat-change ${stat.change.includes('+') ? 'positive' : 'negative'}`}>
-                                    {stat.change}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        {stats.map((stat, index) => (
+          <div key={index} className={`stat-card ${stat.color}`}>
+            <div className="stat-icon">{stat.icon}</div>
+            <div className="stat-info">
+              <span className="stat-label">{stat.label}</span>
+              <div className="stat-value-row">
+                <span className="stat-value">{stat.value}</span>
+                <span className={`stat-change ${stat.change.includes('+') ? 'positive' : 'negative'}`}>
+                  {stat.change}
+                </span>
+              </div>
             </div>
+          </div>
+        ))}
+      </div>
 
-            {/* Recent Activity Section (Placeholder for now) */}
-            <div className="recent-activity">
-                <h2 className="section-title">Son Aktiviteler</h2>
-                <div className="activity-list">
-                    <div className="activity-item">
-                        <span className="time">10:42</span>
-                        <p><strong>bahisdoktoru</strong> yeni bir tahmin paylaştı: <em>Galatasaray - Fenerbahçe</em></p>
-                    </div>
-                    <div className="activity-item">
-                        <span className="time">09:15</span>
-                        <p><strong>yeni_uye_123</strong> kayıt oldu.</p>
-                    </div>
-                    <div className="activity-item">
-                        <span className="time">Dün</span>
-                        <p><strong>admin</strong> 3 tahmini sonuçlandırdı.</p>
-                    </div>
-                </div>
-            </div>
+      {/* Recent Activity Section */}
+      <div className="recent-activity">
+        <h2 className="section-title">Son Aktiviteler</h2>
+        <div className="activity-list">
+          <p className="text-gray-400">Henüz aktivite yok.</p>
+        </div>
+      </div>
 
-            <style jsx>{`
+      <style jsx>{`
         .page-title {
           font-size: 2rem;
           font-weight: 700;
@@ -169,6 +158,6 @@ export default function AdminDashboard() {
         strong { color: #fff; }
         em { color: var(--primary); font-style: normal; }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

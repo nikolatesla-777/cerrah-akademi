@@ -11,6 +11,8 @@ export default function Sidebar({ isCollapsed, toggleCollapse, isMobileOpen, clo
     { name: 'Ameliyathane', path: '/surgery', icon: '🔪' },
     { name: 'Akış', path: '/feed', icon: '📱' },
     { name: 'Liderlik', path: '/leaderboard', icon: '🏆' },
+    { name: 'İçerik Yönetimi', path: '/admin/content', icon: '📝' },
+    { name: 'Kullanıcılar', path: '/admin/users', icon: '👥' },
   ];
 
   return (

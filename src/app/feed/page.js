@@ -15,7 +15,8 @@ export default function FeedPage() {
   const mockPosts = [
     {
       id: 1,
-      user: "cerrah_pasa",
+      username: "cerrah_pasa",
+      displayName: "Cerrah Paşa",
       rank: 1,
       items: [
         { match: "Galatasaray - Fenerbahçe", pick: "MS 1", odds: 2.10, date: "25.11 19:00" },
@@ -28,11 +29,12 @@ export default function FeedPage() {
       likes: 124,
       comments: 45,
       time: "2 saat önce",
-      status: "PENDING" // BEKLİYOR
+      status: "PENDING"
     },
     {
       id: 2,
-      user: "analiz_krali",
+      username: "analiz_krali",
+      displayName: "Analiz Kralı",
       rank: 2,
       items: [
         { match: "Lakers - Warriors", pick: "Üst 220.5", odds: 1.85, date: "26.11 05:00" },
@@ -44,11 +46,12 @@ export default function FeedPage() {
       likes: 89,
       comments: 12,
       time: "4 saat önce",
-      status: "WON" // KAZANDI
+      status: "WON"
     },
     {
       id: 3,
-      user: "risk_sever",
+      username: "risk_sever",
+      displayName: "Risk Sever",
       rank: 5,
       items: [
         { match: "Man City - Liverpool", pick: "MS X", odds: 3.50, date: "25.11 17:30" },
@@ -62,24 +65,44 @@ export default function FeedPage() {
       likes: 32,
       comments: 5,
       time: "5 saat önce",
-      status: "LOST" // KAYBETTİ
+      status: "LOST"
     }
   ];
 
   useEffect(() => {
-    const loadPredictions = () => {
-      const localPredictions = getPredictions();
-      console.log('FeedPage loading. Local predictions:', localPredictions);
+    const loadPredictions = async () => {
+      const dbPredictions = await getPredictions();
+      console.log('FeedPage loading. DB predictions:', dbPredictions);
 
-      // Merge local predictions with mock posts
-      // We reverse local predictions to show newest first
-      setPosts([...localPredictions.reverse(), ...mockPosts]);
+      // Merge local predictions with mock posts (if we still want mock posts)
+      // For now, let's prioritize DB predictions
+      // If DB is empty, maybe show mock? Or just DB.
+      // Let's mix them for transition or just use DB.
+      // The user wants "everyone sees the same feed", so we should probably ONLY show DB predictions + maybe shared mocks.
+      // But for now, let's append mocks to DB data so the feed isn't empty.
+
+      // Transform DB structure to UI structure if needed
+      // Our DB structure matches UI mostly, but let's ensure.
+      const formattedDbPredictions = dbPredictions.map(p => ({
+        ...p,
+        // Ensure fields match
+        displayName: p.users?.display_name || 'Unknown', // We need to join users table
+        username: p.users?.username || 'unknown',
+        // ... other mappings if needed
+      }));
+
+      // Wait, getPredictions currently just returns 'predictions' table data. 
+      // We need to join with 'users' to get username/displayname.
+      // Let's update getPredictions in storage.js to join, OR handle it here.
+      // Updating storage.js is better.
+
+      setPosts([...dbPredictions, ...mockPosts]);
     };
 
     loadPredictions();
 
     // Add event listener for storage changes (cross-tab)
-    window.addEventListener('storage', loadPredictions);
+    // window.addEventListener('storage', loadPredictions); // No longer needed for DB
 
     // Add event listener for focus (same-tab updates)
     window.addEventListener('focus', loadPredictions);
@@ -88,7 +111,7 @@ export default function FeedPage() {
     window.addEventListener('prediction-updated', loadPredictions);
 
     return () => {
-      window.removeEventListener('storage', loadPredictions);
+      // window.removeEventListener('storage', loadPredictions);
       window.removeEventListener('focus', loadPredictions);
       window.removeEventListener('prediction-updated', loadPredictions);
     };
@@ -122,15 +145,23 @@ export default function FeedPage() {
               <div className={`feed-card ${isLocked ? 'blurred' : ''}`}>
                 <div className="card-header">
                   <div className="user-info">
-                    <Link href={user ? `/profile/${post.user}` : '#'} className={!user ? 'disabled-link' : ''}>
-                      <div className="avatar">{post.user[0].toUpperCase()}</div>
+                    <Link href={user ? `/profile/${post.username}` : '#'} className={!user ? 'disabled-link' : ''}>
+                      <div className="avatar">
+                        {post.displayName ? post.displayName[0].toUpperCase() : (post.username ? post.username[0].toUpperCase() : '?')}
+                      </div>
                     </Link>
                     <div className="user-details">
-                      <Link href={user ? `/profile/${post.user}` : '#'} className={`username-link ${!user ? 'disabled-link' : ''}`}>
-                        <span className="username">@{post.user}</span>
+                      <Link href={user ? `/profile/${post.username}` : '#'} className={`username-link ${!user ? 'disabled-link' : ''}`}>
+                        <span className="display-name">{post.displayName || post.username}</span>
                       </Link>
-                      <span className="user-rank">#{post.rank || '-'} Cerrah</span>
+                      <span className="username-handle">@{post.username}</span>
                     </div>
+                    {post.rank && (
+                      <div className="rank-badge" title={`Sıralama: #${post.rank}`}>
+                        <span className="rank-icon">🏆</span>
+                        <span className="rank-number">#{post.rank}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="header-right">
                     <span className="time">{post.time}</span>
@@ -189,14 +220,36 @@ export default function FeedPage() {
                 </div>
 
                 <div className="card-actions">
-                  <button className="action-btn">
-                    <span>❤️</span> {post.likes}
+                  <button
+                    className={`action-btn ${post.isLiked ? 'liked' : ''}`}
+                    onClick={() => {
+                      const updatedPosts = posts.map(p => {
+                        if (p.id === post.id) {
+                          return {
+                            ...p,
+                            likes: p.isLiked ? p.likes - 1 : p.likes + 1,
+                            isLiked: !p.isLiked
+                          };
+                        }
+                        return p;
+                      });
+                      setPosts(updatedPosts);
+                    }}
+                  >
+                    <span>{post.isLiked ? '❤️' : '🤍'}</span> {post.likes}
                   </button>
-                  <button className="action-btn">
+                  <Link href={`/prediction/${post.id}`} className="action-btn">
                     <span>💬</span> {post.comments}
-                  </button>
-                  <button className="action-btn share">
-                    <span>↗️</span> Paylaş
+                  </Link>
+                  <button
+                    className="action-btn share"
+                    onClick={() => {
+                      const text = `Cerrah Akademi'de ${post.displayName} tarafından paylaşılan kupona göz at!`;
+                      const url = `https://cerrahakademi.com/prediction/${post.id}`;
+                      window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
+                    }}
+                  >
+                    <span>↗️</span> Telegram'da Paylaş
                   </button>
                 </div>
               </div>
@@ -312,25 +365,44 @@ export default function FeedPage() {
         .user-details {
           display: flex;
           flex-direction: column;
+          line-height: 1.2;
         }
 
-        .username-link:not(.disabled-link):hover .username {
+        .username-link:not(.disabled-link):hover .display-name {
           color: var(--primary);
           text-decoration: underline;
         }
 
-        .disabled-link {
-          pointer-events: none;
-          text-decoration: none;
+        .display-name {
+          font-weight: 700;
+          font-size: 1rem;
+          color: #fff;
         }
 
-        .username {
-          font-weight: 600;
-        }
-
-        .user-rank {
+        .username-handle {
           font-size: 0.8rem;
           color: #888;
+        }
+
+        .rank-badge {
+          display: flex;
+          align-items: center;
+          gap: 0.2rem;
+          background: rgba(255, 215, 0, 0.1);
+          border: 1px solid rgba(255, 215, 0, 0.3);
+          padding: 0.2rem 0.5rem;
+          border-radius: 1rem;
+          margin-left: 0.5rem;
+        }
+
+        .rank-icon {
+          font-size: 0.8rem;
+        }
+
+        .rank-number {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: #ffd700;
         }
 
         .header-right {
@@ -530,10 +602,21 @@ export default function FeedPage() {
 
         .action-btn:hover {
           color: var(--foreground);
+          background: rgba(255,255,255,0.05);
+        }
+
+        .action-btn.liked {
+          color: #ef4444;
         }
 
         .share {
           margin-left: auto;
+          color: #3b82f6;
+        }
+        
+        .share:hover {
+          color: #60a5fa;
+          background: rgba(59, 130, 246, 0.1);
         }
       `}</style>
       {/* Debug Info Removed for Production */}

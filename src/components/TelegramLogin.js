@@ -1,14 +1,13 @@
-"use client";
-
 import { useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 
-export default function TelegramLogin({ botName = "samplebot", onAuth }) {
+export default function TelegramLogin({ botName = "cerrahvip_bot", onAuth }) {
     const containerRef = useRef(null);
 
     useEffect(() => {
         if (!containerRef.current) return;
 
-        // Check if script is already there to prevent duplicates
+        // Check if script is already there
         if (containerRef.current.querySelector('script')) return;
 
         const script = document.createElement('script');
@@ -21,7 +20,32 @@ export default function TelegramLogin({ botName = "samplebot", onAuth }) {
         script.async = true;
 
         // Define the callback function globally
-        window.onTelegramAuth = (user) => {
+        window.onTelegramAuth = async (user) => {
+            console.log('Telegram Auth Success:', user);
+
+            // Sync with Supabase
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .upsert({
+                        id: user.id.toString(), // Use Telegram ID as User ID
+                        telegram_id: user.id,
+                        username: user.username,
+                        display_name: `${user.first_name} ${user.last_name || ''}`.trim(),
+                        last_seen_at: new Date().toISOString(),
+                        // login_count will be incremented via RPC or we fetch-then-update. 
+                        // For simplicity, let's just update last_seen for now.
+                    }, { onConflict: 'id' });
+
+                if (error) {
+                    console.error('Supabase Sync Error:', error);
+                } else {
+                    console.log('User synced to Supabase');
+                }
+            } catch (err) {
+                console.error('Sync failed:', err);
+            }
+
             if (onAuth) {
                 onAuth(user);
             }
@@ -31,7 +55,6 @@ export default function TelegramLogin({ botName = "samplebot", onAuth }) {
         containerRef.current.appendChild(script);
 
         return () => {
-            // Cleanup global function
             delete window.onTelegramAuth;
         };
     }, [botName, onAuth]);
