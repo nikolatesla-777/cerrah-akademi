@@ -40,10 +40,13 @@ export default function LoginPage() {
 
         <div className="telegram-wrapper">
           {/* 
-            IMPORTANT: Replace 'samplebot' with your actual Telegram Bot Name 
-            created via @BotFather. The domain must also be whitelisted in the bot settings.
+            IMPORTANT: The bot name is now loaded from environment variables.
+            Make sure NEXT_PUBLIC_TELEGRAM_BOT_NAME is set in .env.local
           */}
-          <TelegramLogin botName="samplebot" onAuth={handleTelegramAuth} />
+          <TelegramLogin
+            botName={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || "samplebot"}
+            onAuth={handleTelegramAuth}
+          />
         </div>
 
         {error && <p className="error-message">{error}</p>}
