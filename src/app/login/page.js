@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [status, setStatus] = useState('idle');
   const [loadingStep, setLoadingStep] = useState(''); // 'Telegram doğrulanıyor...', 'Abonelik kontrol ediliyor...'
   const [errorType, setErrorType] = useState(null); // 'subscription', 'generic'
+  const [telegramUser, setTelegramUser] = useState(null); // Store user for retry
 
   const handleTelegramAuth = async (user) => {
     console.log('Telegram User:', user);
@@ -22,6 +23,9 @@ export default function LoginPage() {
       setErrorType('generic');
       return;
     }
+
+    // Store user for retry mechanism
+    setTelegramUser(user);
 
     setStatus('processing');
     setLoadingStep('Telegram kimliği doğrulanıyor...');
@@ -56,6 +60,15 @@ export default function LoginPage() {
     }
   };
 
+  const handleRetry = () => {
+    if (telegramUser) {
+      handleTelegramAuth(telegramUser);
+    } else {
+      // Fallback if user is lost (shouldn't happen), reset to idle
+      setStatus('idle');
+    }
+  };
+
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -79,7 +92,7 @@ export default function LoginPage() {
             <a href="https://t.me/cerrahvip" target="_blank" className="join-channel-btn">
               <span>📢</span> @cerrahvip Kanalına Katıl
             </a>
-            <button onClick={() => setStatus('idle')} className="retry-btn">
+            <button onClick={handleRetry} className="retry-btn">
               Abone Oldum, Tekrar Dene
             </button>
           </div>
@@ -89,6 +102,9 @@ export default function LoginPage() {
         {status === 'error' && errorType === 'generic' && (
           <div className="error-message">
             <p>Bir hata oluştu. Lütfen tekrar deneyin.</p>
+            <button onClick={() => setStatus('idle')} className="text-sm underline mt-2">
+              Tekrar Dene
+            </button>
           </div>
         )}
 
