@@ -102,3 +102,23 @@ export const updatePrediction = async (updatedPrediction) => {
     window.dispatchEvent(new Event('prediction-updated'));
     return data;
 };
+
+export const syncUser = async (user) => {
+    if (!user) return;
+
+    // Use telegram_id as the ID if available, otherwise fallback (though we should have one)
+    const userId = user.id ? String(user.id) : user.telegram_id ? String(user.telegram_id) : null;
+
+    if (!userId) return;
+
+    const { error } = await supabase
+        .from('users')
+        .upsert({
+            id: userId,
+            username: user.username,
+            display_name: user.first_name || user.username,
+            last_seen_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+    if (error) console.error('Error syncing user:', error);
+};
