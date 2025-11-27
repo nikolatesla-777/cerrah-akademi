@@ -56,9 +56,11 @@ export default function MatchSearchAutocomplete({ onSelectMatch, selectedMatch }
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1);
-        } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+        } else if (e.key === 'Enter') {
             e.preventDefault();
-            handleSelect(results[highlightedIndex]);
+            if (highlightedIndex >= 0) {
+                handleSelect(results[highlightedIndex]);
+            }
         } else if (e.key === 'Escape') {
             setIsOpen(false);
         }

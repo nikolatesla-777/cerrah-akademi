@@ -4,70 +4,71 @@ import { useState, useEffect } from 'react';
 import { getPredictionTypes } from '@/lib/fixtures';
 
 export default function PredictionTypeSelector({ selectedFixture, onSelectPrediction }) {
-    const [selectedType, setSelectedType] = useState('');
-    const [odds, setOdds] = useState(null);
+  const [selectedType, setSelectedType] = useState('');
+  const [odds, setOdds] = useState(null);
 
-    const predictionTypes = getPredictionTypes();
+  const predictionTypes = getPredictionTypes();
 
-    useEffect(() => {
-        // Reset when fixture changes
-        setSelectedType('');
-        setOdds(null);
-    }, [selectedFixture]);
+  useEffect(() => {
+    // Reset when fixture changes
+    setSelectedType('');
+    setOdds(null);
+  }, [selectedFixture]);
 
-    const handleSelect = (type) => {
-        setSelectedType(type);
+  const handleSelect = (type) => {
+    setSelectedType(type);
 
-        // Get odds for selected prediction type
-        if (selectedFixture && selectedFixture.odds[type]) {
-            const oddValue = selectedFixture.odds[type];
-            setOdds(oddValue);
-            onSelectPrediction({
-                type,
-                odds: oddValue
-            });
-        } else {
-            setOdds(null);
-            onSelectPrediction({ type, odds: null });
-        }
-    };
+    // Get odds for selected prediction type
+    if (selectedFixture && selectedFixture.odds[type]) {
+      const oddValue = selectedFixture.odds[type];
+      setOdds(oddValue);
+      onSelectPrediction({
+        type,
+        odds: oddValue
+      });
+    } else {
+      setOdds(null);
+      onSelectPrediction({ type, odds: null });
+    }
+  };
 
-    return (
-        <div className="prediction-selector">
-            <label htmlFor="prediction-type">Tahmin Tipi</label>
+  return (
+    <div className="prediction-selector">
+      <label htmlFor="prediction-type">Tahmin Tipi</label>
 
-            <div className="prediction-grid">
-                {predictionTypes.map((type) => {
-                    const isAvailable = selectedFixture && selectedFixture.odds[type];
-                    const oddValue = isAvailable ? selectedFixture.odds[type] : null;
+      <div className="prediction-grid">
+        {predictionTypes.map((type) => {
+          const isAvailable = selectedFixture && selectedFixture.odds[type];
+          const oddValue = isAvailable ? selectedFixture.odds[type] : null;
 
-                    return (
-                        <button
-                            key={type}
-                            className={`prediction-btn ${selectedType === type ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
-                            onClick={() => isAvailable && handleSelect(type)}
-                            disabled={!isAvailable}
-                        >
-                            <span className="type-label">{type}</span>
-                            {oddValue && (
-                                <span className="type-odds">{oddValue.toFixed(2)}</span>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
+          return (
+            <button
+              type="button"
+              key={type}
+              className={`prediction-btn ${selectedType === type ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
+              onClick={() => isAvailable && handleSelect(type)}
+              disabled={!isAvailable}
+            >
+              <span className="type-label">{type}</span>
+              {oddValue && (
+                <span className="type-odds">{oddValue.toFixed(2)}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-            {!selectedFixture && (
-                <p className="helper-text">Önce bir maç seçin</p>
-            )}
+      {!selectedFixture && (
+        <p className="helper-text">Önce bir maç seçin</p>
+      )}
 
-            {selectedType && odds && (
-                <div className="selected-info">
-                    <strong>Seçilen:</strong> {selectedType} @ {odds.toFixed(2)}
-                </div>
-            )}
+      {selectedType && odds && (
+        <div className="selected-info">
+          <strong>Seçilen:</strong> {selectedType} @ {odds.toFixed(2)}
+        </div>
+      )}
 
-            <style jsx>{`
+      <style jsx>{`
         .prediction-selector {
           display: flex;
           flex-direction: column;
@@ -140,6 +141,6 @@ export default function PredictionTypeSelector({ selectedFixture, onSelectPredic
           color: var(--primary);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
