@@ -12,9 +12,11 @@ export default function LoginPage() {
 
   const handleTelegramAuth = async (user) => {
     console.log('Telegram User:', user);
+    alert('Telegram Auth Callback Triggered! User: ' + JSON.stringify(user));
 
     if (user) {
       try {
+        alert('Checking subscription...');
         // 1. Check subscription status
         const res = await fetch('/api/check-subscription', {
           method: 'POST',
@@ -23,12 +25,15 @@ export default function LoginPage() {
         });
 
         const data = await res.json();
+        alert('Subscription check result: ' + JSON.stringify(data));
 
         if (data.isSubscribed) {
           // 2. If subscribed, proceed with login
+          alert('User is subscribed. Logging in...');
           login(user);
         } else {
           // 3. If not subscribed, show error
+          alert('User is NOT subscribed.');
           setError(
             <span>
               Giriş yapabilmek için <a href="https://t.me/cerrahvip" target="_blank" className="underline font-bold">@cerrahvip</a> kanalına abone olmalısınız.
@@ -37,11 +42,13 @@ export default function LoginPage() {
         }
       } catch (err) {
         console.error('Login error:', err);
+        alert('Login Error: ' + err.message);
         // In case of API error (e.g. missing token in dev), maybe allow login or show generic error?
         // For now, show generic error to be safe.
         setError('Giriş kontrolü sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
       }
     } else {
+      alert('User object is missing!');
       setError('Giriş başarısız oldu.');
     }
   };
