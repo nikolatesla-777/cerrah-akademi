@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getPredictions } from '@/lib/storage';
 import Link from 'next/link';
 import { useAuth } from '@/components/LayoutShell';
 
@@ -8,16 +9,18 @@ export default function FeedPage() {
   const { user } = useAuth();
   const [showLoginPopup, setShowLoginPopup] = useState(false);
 
+  const [posts, setPosts] = useState([]);
+
   // Mock data - Coupons
-  const posts = [
+  const mockPosts = [
     {
       id: 1,
       user: "cerrah_pasa",
       rank: 1,
       items: [
-        { match: "Galatasaray - Fenerbahçe", pick: "MS 1", odds: 2.10 },
-        { match: "Beşiktaş - Trabzonspor", pick: "KG Var", odds: 1.75 },
-        { match: "Adana Demir - Samsunspor", pick: "Üst 2.5", odds: 1.60 }
+        { match: "Galatasaray - Fenerbahçe", pick: "MS 1", odds: 2.10, date: "25.11 19:00" },
+        { match: "Beşiktaş - Trabzonspor", pick: "KG Var", odds: 1.75, date: "25.11 19:30" },
+        { match: "Adana Demir - Samsunspor", pick: "Üst 2.5", odds: 1.60, date: "25.11 16:00" }
       ],
       totalOdds: 5.88,
       confidence: 9,
@@ -32,8 +35,8 @@ export default function FeedPage() {
       user: "analiz_krali",
       rank: 2,
       items: [
-        { match: "Lakers - Warriors", pick: "Üst 220.5", odds: 1.85 },
-        { match: "Celtics - Heat", pick: "MS 1 (-5.5)", odds: 1.90 }
+        { match: "Lakers - Warriors", pick: "Üst 220.5", odds: 1.85, date: "26.11 05:00" },
+        { match: "Celtics - Heat", pick: "MS 1 (-5.5)", odds: 1.90, date: "26.11 03:30" }
       ],
       totalOdds: 3.51,
       confidence: 8,
@@ -48,10 +51,10 @@ export default function FeedPage() {
       user: "risk_sever",
       rank: 5,
       items: [
-        { match: "Man City - Liverpool", pick: "MS X", odds: 3.50 },
-        { match: "Arsenal - Chelsea", pick: "MS 2", odds: 4.20 },
-        { match: "Real Madrid - Barcelona", pick: "KG Yok", odds: 2.10 },
-        { match: "Bayern - Dortmund", pick: "Üst 3.5", odds: 2.05 }
+        { match: "Man City - Liverpool", pick: "MS X", odds: 3.50, date: "25.11 17:30" },
+        { match: "Arsenal - Chelsea", pick: "MS 2", odds: 4.20, date: "25.11 20:00" },
+        { match: "Real Madrid - Barcelona", pick: "KG Yok", odds: 2.10, date: "25.11 21:00" },
+        { match: "Bayern - Dortmund", pick: "Üst 3.5", odds: 2.05, date: "25.11 18:30" }
       ],
       totalOdds: 63.28,
       confidence: 4,
@@ -62,6 +65,34 @@ export default function FeedPage() {
       status: "LOST" // KAYBETTİ
     }
   ];
+
+  useEffect(() => {
+    const loadPredictions = () => {
+      const localPredictions = getPredictions();
+      console.log('FeedPage loading. Local predictions:', localPredictions);
+
+      // Merge local predictions with mock posts
+      // We reverse local predictions to show newest first
+      setPosts([...localPredictions.reverse(), ...mockPosts]);
+    };
+
+    loadPredictions();
+
+    // Add event listener for storage changes (cross-tab)
+    window.addEventListener('storage', loadPredictions);
+
+    // Add event listener for focus (same-tab updates)
+    window.addEventListener('focus', loadPredictions);
+
+    // Add custom event listener for immediate updates
+    window.addEventListener('prediction-updated', loadPredictions);
+
+    return () => {
+      window.removeEventListener('storage', loadPredictions);
+      window.removeEventListener('focus', loadPredictions);
+      window.removeEventListener('prediction-updated', loadPredictions);
+    };
+  }, []);
 
   return (
     <div className="feed-container">
@@ -125,7 +156,10 @@ export default function FeedPage() {
                   <div className="coupon-items-list">
                     {post.items.map((item, idx) => (
                       <div key={idx} className="coupon-list-item">
-                        <span className="match-name">{item.match}</span>
+                        <div className="match-info">
+                          <span className="match-date">{item.date}</span>
+                          <span className="match-name">{item.match}</span>
+                        </div>
                         <div className="pick-info">
                           <span className="badge pick">{item.pick}</span>
                           <span className="badge odds">{item.odds.toFixed(2)}</span>
@@ -379,6 +413,19 @@ export default function FeedPage() {
           padding-bottom: 0;
         }
 
+        .match-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.1rem;
+        }
+
+        .match-date {
+          font-size: 0.75rem;
+          color: var(--primary);
+          font-family: monospace;
+          opacity: 0.9;
+        }
+
         .match-name {
           font-size: 0.95rem;
           font-weight: 500;
@@ -489,6 +536,7 @@ export default function FeedPage() {
           margin-left: auto;
         }
       `}</style>
+      {/* Debug Info Removed for Production */}
     </div>
   );
 }

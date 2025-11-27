@@ -6,6 +6,7 @@ import MatchSearchAutocomplete from '@/components/MatchSearchAutocomplete';
 import PredictionTypeSelector from '@/components/PredictionTypeSelector';
 import { formatMatchName } from '@/lib/fixtures';
 import { useAuth } from '@/components/LayoutShell';
+import { savePrediction } from '@/lib/storage';
 
 export default function SurgeryPage() {
   const { user } = useAuth();
@@ -53,7 +54,10 @@ export default function SurgeryPage() {
   };
 
   const handleSubmitCoupon = async () => {
-    if (!user) {
+    // Try to get user from context or localStorage
+    const currentUser = user || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user')) : null);
+
+    if (!currentUser) {
       setShowLoginPopup(true);
       return;
     }
@@ -73,7 +77,7 @@ export default function SurgeryPage() {
       const res = await fetch('/api/check-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramId: user.id })
+        body: JSON.stringify({ telegramId: currentUser.id })
       });
       const data = await res.json();
 
@@ -84,16 +88,27 @@ export default function SurgeryPage() {
       }
 
       const finalCoupon = {
-        items: coupon,
-        confidence: couponData.confidence,
-        analysis: couponData.analysis,
+        id: Date.now(),
+        user: currentUser.username || currentUser.first_name || "misafir_cerrah",
+        rank: 1, // Mock rank
+        items: coupon.map(item => ({
+          match: item.match,
+          pick: item.pick,
+          odds: item.odds,
+          date: "Bugün" // Mock date
+        })),
         totalOdds: totalOdds,
-        stake: stake,
-        potentialReturn: potentialReturn
+        confidence: parseInt(couponData.confidence),
+        analysis: couponData.analysis,
+        likes: 0,
+        comments: 0,
+        time: "Az önce",
+        status: "PENDING"
       };
 
+      savePrediction(finalCoupon);
       console.log('Coupon submitted:', finalCoupon);
-      alert('Reçete başarıyla paylaşıldı! (Demo)');
+      alert('Reçete başarıyla paylaşıldı ve akışa düştü!');
 
       // Reset form
       setCoupon([]);

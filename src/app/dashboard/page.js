@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getPredictions } from '@/lib/storage';
 
 import { useAuth } from '@/components/LayoutShell';
 
@@ -15,11 +17,38 @@ export default function DashboardPage() {
     rank: 42
   };
 
-  const activePredictions = [
-    { id: 1, match: "Galatasaray - Fenerbahçe", time: "20:00", pick: "MS 1", odds: 2.10, status: "pending" },
-    { id: 2, match: "Lakers - Warriors", time: "03:30", pick: "Üst 220.5", odds: 1.85, status: "pending" },
-    { id: 3, match: "Real Madrid - Barcelona", time: "22:00", pick: "KG Var", odds: 1.70, status: "pending" },
-  ];
+  const [activePredictions, setActivePredictions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Load local predictions
+    const localPredictions = getPredictions();
+
+    // Filter for "active" or "pending" predictions
+    // For now, we'll just take the most recent ones that are PENDING
+    const myPendingPredictions = localPredictions
+      .filter(p => p.status === 'PENDING')
+      .map(p => ({
+        id: p.id,
+        match: p.items[0]?.match || 'Çoklu Kupon', // Show first match or generic title
+        time: p.items[0]?.date || 'Bugün',
+        pick: p.items.length > 1 ? `${p.items.length} Maç` : p.items[0]?.pick,
+        odds: p.totalOdds,
+        status: 'pending',
+        isCoupon: p.items.length > 1
+      }));
+
+    // Mock active predictions
+    const mockActivePredictions = [
+      { id: 1, match: "Galatasaray - Fenerbahçe", time: "20:00", pick: "MS 1", odds: 2.10, status: "pending" },
+      { id: 2, match: "Lakers - Warriors", time: "03:30", pick: "Üst 220.5", odds: 1.85, status: "pending" },
+      { id: 3, match: "Real Madrid - Barcelona", time: "22:00", pick: "KG Var", odds: 1.70, status: "pending" },
+    ];
+
+    // Combine them, prioritizing user's predictions
+    setActivePredictions([...myPendingPredictions, ...mockActivePredictions]);
+    setLoading(false);
+  }, []);
 
   return (
     <div className="dashboard-container">

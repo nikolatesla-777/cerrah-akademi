@@ -23,34 +23,48 @@ export default function LayoutShell({ children }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Check for user in localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      // Simulate adding a role if not present (default to 'Çaylak')
-      if (!parsedUser.role) {
-        parsedUser.role = 'Çaylak';
-        // For demo purposes, let's make the 'orancerrahi' user an Admin
-        if (parsedUser.username === 'orancerrahi' || parsedUser.first_name === 'Admin') {
-          parsedUser.role = 'Admin';
+    const checkUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        if (!parsedUser.role) {
+          parsedUser.role = 'Çaylak';
+          if (parsedUser.username === 'kerafibey' || parsedUser.first_name === 'Admin') {
+            parsedUser.role = 'Admin';
+          }
         }
+        setUser(parsedUser);
+      } else {
+        setUser(null);
       }
-      setUser(parsedUser);
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    checkUser();
+
+    window.addEventListener('storage', checkUser);
+    // Custom event for same-tab login/logout updates if needed
+    window.addEventListener('auth-change', checkUser);
+
+    return () => {
+      window.removeEventListener('storage', checkUser);
+      window.removeEventListener('auth-change', checkUser);
+    };
   }, []);
 
   const login = (userData) => {
     // Assign default role on login
-    const userWithRole = { ...userData, role: 'Çaylak' };
+    const userWithRole = { ...userData, username: userData.username || 'kerafibey', role: 'Çaylak' };
     localStorage.setItem('user', JSON.stringify(userWithRole));
     setUser(userWithRole);
+    window.dispatchEvent(new Event('auth-change'));
     router.push('/dashboard');
   };
 
   const logout = () => {
     localStorage.removeItem('user');
     setUser(null);
+    window.dispatchEvent(new Event('auth-change'));
     router.push('/login');
   };
 
