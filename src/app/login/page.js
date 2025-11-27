@@ -3,30 +3,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TelegramLogin from '@/components/TelegramLogin';
+import { useAuth } from '@/components/LayoutShell';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [error, setError] = useState(null);
 
   const handleTelegramAuth = (user) => {
     console.log('Telegram User:', user);
-    // Here you would typically send this data to your backend to verify the hash
-    // For now, we'll simulate a successful login and redirect
-
-    // Example user object:
-    // {
-    //   id: 123456789,
-    //   first_name: "John",
-    //   username: "johndoe",
-    //   photo_url: "...",
-    //   auth_date: 1600000000,
-    //   hash: "..."
-    // }
 
     if (user) {
-      // Store user info (in real app, use secure session/cookie)
-      localStorage.setItem('user', JSON.stringify(user));
-      router.push('/dashboard');
+      // Use the login function from context to update global state immediately
+      login(user);
     } else {
       setError('Giriş başarısız oldu.');
     }

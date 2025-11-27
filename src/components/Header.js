@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-export default function Header() {
+export default function Header({ user, logout }) {
   return (
     <header className="header">
       <div className="header-content">
@@ -14,7 +14,14 @@ export default function Header() {
         </div>
 
         <div className="user-actions">
-          <Link href="/login" className="btn btn-primary btn-sm">Giriş Yap</Link>
+          {user ? (
+            <div className="user-profile">
+              <span className="welcome-text">Hoşgeldin, <strong>{user.first_name}</strong></span>
+              <button onClick={logout} className="btn btn-outline btn-sm">Çıkış</button>
+            </div>
+          ) : (
+            <Link href="/login" className="btn btn-primary btn-sm">Giriş Yap</Link>
+          )}
         </div>
       </div>
 
@@ -53,11 +60,38 @@ export default function Header() {
         .user-actions {
           display: flex;
           gap: 0.75rem;
+          align-items: center;
+        }
+
+        .user-profile {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .welcome-text {
+          font-size: 0.9rem;
+          color: #a3a3a3;
+        }
+
+        .welcome-text strong {
+          color: var(--foreground);
         }
         
         .btn-sm {
           padding: 0.4rem 0.8rem;
           font-size: 0.8rem;
+        }
+
+        .btn-outline {
+          background: transparent;
+          border: 1px solid var(--border);
+          color: #a3a3a3;
+        }
+
+        .btn-outline:hover {
+          border-color: var(--foreground);
+          color: var(--foreground);
         }
       `}</style>
     </header>
