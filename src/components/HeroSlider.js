@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/components/LayoutShell';
 
 export default function HeroSlider() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const { user } = useAuth();
 
   const slides = [
     {
       id: 1,
       title: "Cerrah Akademi'ye Hoşgeldiniz",
       subtitle: "En iyi tipsterların buluşma noktası",
-      cta: "Hemen Başla",
-      link: "/login",
+      cta: user ? "Panele Git" : "Hemen Başla",
+      link: user ? "/dashboard" : "/login",
       gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
     },
     {

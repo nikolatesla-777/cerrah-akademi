@@ -4,8 +4,11 @@ import Link from 'next/link';
 import HeroSlider from '@/components/HeroSlider';
 import BannerAd from '@/components/BannerAd';
 import WinningPredictionsSlider from '@/components/WinningPredictionsSlider';
+import { useAuth } from '@/components/LayoutShell';
 
 export default function Home() {
+  const { user } = useAuth();
+
   return (
     <div className="landing-page">
       {/* Hero Slider */}
@@ -25,9 +28,15 @@ export default function Home() {
             Gerçek tahmincilerin buluşma noktası.
           </p>
           <div className="hero-actions">
-            <Link href="/login" className="btn btn-primary btn-lg">
-              Telegram ile Giriş Yap
-            </Link>
+            {user ? (
+              <Link href="/dashboard" className="btn btn-primary btn-lg">
+                Panele Git 🚀
+              </Link>
+            ) : (
+              <Link href="/login" className="btn btn-primary btn-lg">
+                Telegram ile Giriş Yap
+              </Link>
+            )}
             <Link href="/leaderboard" className="btn btn-outline btn-lg">
               Liderleri Gör
             </Link>
