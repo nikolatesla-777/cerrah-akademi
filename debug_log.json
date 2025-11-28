@@ -1,0 +1,440 @@
+{
+  "get": "fixtures",
+  "parameters": {
+    "live": "all"
+  },
+  "errors": [],
+  "results": 6,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "fixture": {
+        "id": 1403681,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2025-11-28T08:30:00+00:00",
+        "timestamp": 1764318600,
+        "periods": {
+          "first": 1764318600,
+          "second": null
+        },
+        "venue": {
+          "id": null,
+          "name": "Stadion Sumpah Pemuda",
+          "city": "Jakarta"
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 9,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 274,
+        "name": "Liga 1",
+        "country": "Indonesia",
+        "logo": "https://media.api-sports.io/football/leagues/274.png",
+        "flag": "https://media.api-sports.io/flags/id.svg",
+        "season": 2025,
+        "round": "Regular Season - 14",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 2443,
+          "name": "Bhayangkara FC",
+          "logo": "https://media.api-sports.io/football/teams/2443.png",
+          "winner": null
+        },
+        "away": {
+          "id": 2446,
+          "name": "Persebaya Surabaya",
+          "logo": "https://media.api-sports.io/football/teams/2446.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": []
+    },
+    {
+      "fixture": {
+        "id": 1469587,
+        "referee": "Shaun Evans, Australia",
+        "timezone": "UTC",
+        "date": "2025-11-28T08:35:00+00:00",
+        "timestamp": 1764318900,
+        "periods": {
+          "first": 1764318900,
+          "second": null
+        },
+        "venue": {
+          "id": 124,
+          "name": "Suncorp Stadium",
+          "city": "Brisbane"
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 3,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 188,
+        "name": "A-League",
+        "country": "Australia",
+        "logo": "https://media.api-sports.io/football/leagues/188.png",
+        "flag": "https://media.api-sports.io/flags/au.svg",
+        "season": 2025,
+        "round": "Regular Season - 6",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 947,
+          "name": "Brisbane Roar",
+          "logo": "https://media.api-sports.io/football/teams/947.png",
+          "winner": null
+        },
+        "away": {
+          "id": 944,
+          "name": "Melbourne Victory",
+          "logo": "https://media.api-sports.io/football/teams/944.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": []
+    },
+    {
+      "fixture": {
+        "id": 1482429,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2025-11-28T08:30:00+00:00",
+        "timestamp": 1764318600,
+        "periods": {
+          "first": 1764318600,
+          "second": null
+        },
+        "venue": {
+          "id": 3801,
+          "name": "Sheikh Fazlul Haque Mani Stadium",
+          "city": "Gopalganj"
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 7,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 398,
+        "name": "Premier League",
+        "country": "Bangladesh",
+        "logo": "https://media.api-sports.io/football/leagues/398.png",
+        "flag": "https://media.api-sports.io/flags/bd.svg",
+        "season": 2026,
+        "round": "Regular Season - 4",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 5009,
+          "name": "Abahani",
+          "logo": "https://media.api-sports.io/football/teams/5009.png",
+          "winner": null
+        },
+        "away": {
+          "id": 10106,
+          "name": "Bangladesh Police",
+          "logo": "https://media.api-sports.io/football/teams/10106.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": []
+    },
+    {
+      "fixture": {
+        "id": 1482430,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2025-11-28T08:30:00+00:00",
+        "timestamp": 1764318600,
+        "periods": {
+          "first": 1764318600,
+          "second": null
+        },
+        "venue": {
+          "id": null,
+          "name": null,
+          "city": null
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 7,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 398,
+        "name": "Premier League",
+        "country": "Bangladesh",
+        "logo": "https://media.api-sports.io/football/leagues/398.png",
+        "flag": "https://media.api-sports.io/flags/bd.svg",
+        "season": 2026,
+        "round": "Regular Season - 4",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 5011,
+          "name": "Arambagh",
+          "logo": "https://media.api-sports.io/football/teams/5011.png",
+          "winner": null
+        },
+        "away": {
+          "id": 20780,
+          "name": "Fortis",
+          "logo": "https://media.api-sports.io/football/teams/20780.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": []
+    },
+    {
+      "fixture": {
+        "id": 1488028,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2025-11-28T08:30:00+00:00",
+        "timestamp": 1764318600,
+        "periods": {
+          "first": 1764318600,
+          "second": null
+        },
+        "venue": {
+          "id": null,
+          "name": null,
+          "city": null
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 8,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 1012,
+        "name": "AFC U17 Asian Cup",
+        "country": "World",
+        "logo": "https://media.api-sports.io/football/leagues/1012.png",
+        "flag": null,
+        "season": 2026,
+        "round": "Group Stage - 4",
+        "standings": false
+      },
+      "teams": {
+        "home": {
+          "id": 25303,
+          "name": "Kuwait U17",
+          "logo": "https://media.api-sports.io/football/teams/25303.png",
+          "winner": null
+        },
+        "away": {
+          "id": 25307,
+          "name": "Maldives U17",
+          "logo": "https://media.api-sports.io/football/teams/25307.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": []
+    },
+    {
+      "fixture": {
+        "id": 1488027,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2025-11-28T07:00:00+00:00",
+        "timestamp": 1764313200,
+        "periods": {
+          "first": 1764313200,
+          "second": 1764316800
+        },
+        "venue": {
+          "id": null,
+          "name": null,
+          "city": null
+        },
+        "status": {
+          "long": "Second Half",
+          "short": "2H",
+          "elapsed": 80,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 1012,
+        "name": "AFC U17 Asian Cup",
+        "country": "World",
+        "logo": "https://media.api-sports.io/football/leagues/1012.png",
+        "flag": null,
+        "season": 2026,
+        "round": "Group Stage - 4",
+        "standings": false
+      },
+      "teams": {
+        "home": {
+          "id": 25295,
+          "name": "Bangladesh U17",
+          "logo": "https://media.api-sports.io/football/teams/25295.png",
+          "winner": null
+        },
+        "away": {
+          "id": 25294,
+          "name": "Bahrain U17",
+          "logo": "https://media.api-sports.io/football/teams/25294.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": []
+    }
+  ]
+}

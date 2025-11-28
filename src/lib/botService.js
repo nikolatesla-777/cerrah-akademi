@@ -1,114 +1,190 @@
 import { supabase } from './supabase';
 
-// Mock Data Generator
-const generateMockFixtures = () => {
-    const teams = [
-        'Galatasaray', 'Fenerbahçe', 'Beşiktaş', 'Trabzonspor',
-        'Real Madrid', 'Barcelona', 'Man City', 'Liverpool',
-        'Bayern Munich', 'Dortmund', 'PSG', 'Milan'
-    ];
+const API_KEY = process.env.NEXT_PUBLIC_API_FOOTBALL_KEY;
+const BASE_URL = 'https://v3.football.api-sports.io';
 
-    const fixtures = [];
-    const today = new Date();
-
-    for (let i = 0; i < 5; i++) {
-        const home = teams[Math.floor(Math.random() * teams.length)];
-        let away = teams[Math.floor(Math.random() * teams.length)];
-        while (home === away) away = teams[Math.floor(Math.random() * teams.length)];
-
-        const hour = 18 + Math.floor(Math.random() * 4); // 18:00 - 21:00
-        const matchTime = new Date(today);
-        matchTime.setHours(hour, 0, 0, 0);
-
-        fixtures.push({
-            id: `mock_${Date.now()}_${i}`,
-            home_team: home,
-            away_team: away,
-            league: 'Süper Lig', // Simplified
-            match_time: matchTime.toISOString(),
-            odds: {
-                '1': (1 + Math.random() * 2).toFixed(2),
-                'X': (2 + Math.random() * 2).toFixed(2),
-                '2': (1 + Math.random() * 3).toFixed(2)
-            },
-            status: 'NOT_STARTED',
-            score: null
-        });
-    }
-    return fixtures;
-};
+// League IDs (API-Football)
+const LEAGUES = [
+    203, // Süper Lig (TR)
+    39,  // Premier League (EN)
+    140, // La Liga (ES)
+    78,  // Bundesliga (DE)
+    135, // Serie A (IT)
+    61   // Ligue 1 (FR)
+];
 
 export const BotService = {
-    // 1. Fixture Bot
-    async fetchFixtures() {
-        console.log('Bot: Fetching fixtures...');
-        // In real implementation, fetch from API here
-        const fixtures = generateMockFixtures();
+    // 1. Fetch Fixtures (Daily Program)
+    fetchFixtures: async () => {
+        if (!API_KEY) {
+            console.error('API Key missing! Add NEXT_PUBLIC_API_FOOTBALL_KEY to .env.local');
+            return { success: false, message: 'API Key missing' };
+        }
 
-        const { data, error } = await supabase
-            .from('fixtures')
-            .upsert(fixtures, { onConflict: 'id' }) // In real app, use external ID
-            .select();
+        const today = new Date().toISOString().split('T')[0];
+        // Removed: let totalImported = 0; // This is now declared inside the try block
 
-        if (error) throw error;
-        return { message: `${fixtures.length} fixtures synced.`, data };
-    },
+        try {
+            // FREE PLAN STRATEGY: Fetch ONLY currently live matches
+            // The Free plan blocks 'season=2025' for full schedule, but allows 'live=all'.
 
-    // 2. Odds Bot
-    async updateOdds() {
-        console.log('Bot: Updating odds...');
-        // Fetch active fixtures
-        const { data: activeFixtures } = await supabase
-            .from('fixtures')
-            .select('*')
-            .eq('status', 'NOT_STARTED');
+            const url = `${BASE_URL}/fixtures?live=all`;
+            const response = await fetch(url, {
+                headers: { 'x-apisports-key': API_KEY }
+            });
 
-        if (!activeFixtures || activeFixtures.length === 0) return { message: 'No active fixtures to update.' };
+            const json = await response.json();
 
-        const updates = activeFixtures.map(f => ({
-            ...f,
-            odds: {
-                '1': (parseFloat(f.odds['1']) + (Math.random() - 0.5) * 0.1).toFixed(2),
-                'X': (parseFloat(f.odds['X']) + (Math.random() - 0.5) * 0.1).toFixed(2),
-                '2': (parseFloat(f.odds['2']) + (Math.random() - 0.5) * 0.1).toFixed(2)
+            // Debug log
+            const fs = require('fs');
+            const path = require('path');
+            try {
+                fs.writeFileSync(path.join(process.cwd(), 'debug_log.json'), JSON.stringify(json, null, 2));
+            } catch (e) { console.error(e); }
+
+            if (json.errors && Object.keys(json.errors).length > 0) {
+                console.error('API Error:', json.errors);
+                return { success: false, message: 'API Error', errors: json.errors };
             }
-        }));
 
-        const { error } = await supabase.from('fixtures').upsert(updates);
-        if (error) throw error;
-        return { message: 'Odds updated.', count: updates.length };
+            const matches = json.response || [];
+            let totalImported = 0;
+
+            for (const match of matches) {
+                const { fixture, teams, goals, league, status } = match;
+
+                // Optional: Filter by specific leagues if needed, but for now let's import all to show data
+                // if (!LEAGUES.includes(league.id)) continue;
+
+                // Map Status
+                let dbStatus = 'NOT_STARTED';
+                const shortStatus = status?.short;
+
+                if (['1H', 'HT', '2H', 'ET', 'P', 'BT'].includes(shortStatus)) dbStatus = 'LIVE';
+                else if (['FT', 'AET', 'PEN'].includes(shortStatus)) dbStatus = 'FINISHED';
+                else if (['PST', 'CANC', 'ABD'].includes(shortStatus)) dbStatus = 'CANCELLED';
+
+                // Prepare Data
+                const fixtureData = {
+                    external_id: fixture.id,
+                    home_team: teams.home.name,
+                    away_team: teams.away.name,
+                    league: league.name,
+                    match_time: fixture.date,
+                    status: dbStatus,
+                    score: `${goals.home ?? 0}-${goals.away ?? 0}`,
+                };
+
+                // Upsert into DB
+                const { error } = await supabase
+                    .from('fixtures')
+                    .upsert(fixtureData, { onConflict: 'external_id' });
+
+                if (!error) totalImported++;
+            }
+
+            return { success: true, message: `Imported ${totalImported} LIVE matches.` };
+        } catch (error) {
+            console.error('Bot Error:', error);
+            return { success: false, message: error.message };
+        }
     },
 
-    // 3. Score Bot
-    async checkResults() {
-        console.log('Bot: Checking results...');
-        // Mock: Finish random matches
-        const { data: liveFixtures } = await supabase
+    // 2. Update Odds (Periodically)
+    updateOdds: async () => {
+        if (!API_KEY) return { success: false, message: 'API Key missing' };
+
+        // Get upcoming matches from DB
+        const { data: fixtures } = await supabase
             .from('fixtures')
-            .select('*')
-            .neq('status', 'FINISHED');
+            .select('external_id')
+            .eq('status', 'NOT_STARTED')
+            .not('external_id', 'is', null)
+            .limit(10); // Batch limit to save API calls
 
-        if (!liveFixtures || liveFixtures.length === 0) return { message: 'No matches to result.' };
+        let updatedCount = 0;
 
-        const updates = [];
-        for (const f of liveFixtures) {
-            // 30% chance to finish a match
-            if (Math.random() > 0.7) {
-                const homeScore = Math.floor(Math.random() * 4);
-                const awayScore = Math.floor(Math.random() * 3);
-                updates.push({
-                    ...f,
-                    status: 'FINISHED',
-                    score: `${homeScore}-${awayScore}`
+        for (const f of fixtures || []) {
+            try {
+                const response = await fetch(`${BASE_URL}/odds?fixture=${f.external_id}`, {
+                    headers: { 'x-apisports-key': API_KEY }
                 });
+                const json = await response.json();
+
+                if (json.response && json.response.length > 0) {
+                    const bookmakers = json.response[0].bookmakers;
+                    const bet365 = bookmakers.find(b => b.id === 1) || bookmakers[0]; // Prefer Bet365
+
+                    if (bet365) {
+                        const matchWinner = bet365.bets.find(b => b.id === 1); // Id 1 is usually Match Winner
+                        if (matchWinner) {
+                            const odds = {
+                                '1': matchWinner.values.find(v => v.value === 'Home')?.odd,
+                                'X': matchWinner.values.find(v => v.value === 'Draw')?.odd,
+                                '2': matchWinner.values.find(v => v.value === 'Away')?.odd
+                            };
+
+                            await supabase
+                                .from('fixtures')
+                                .update({ odds })
+                                .eq('external_id', f.external_id);
+
+                            updatedCount++;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(`Error updating odds for ${f.external_id}`, e);
             }
         }
 
-        if (updates.length > 0) {
-            const { error } = await supabase.from('fixtures').upsert(updates);
-            if (error) throw error;
-        }
+        return { success: true, message: `Updated odds for ${updatedCount} matches.` };
+    },
 
-        return { message: 'Results checked.', finished: updates.length };
+    // 3. Check Results (Live Scores)
+    checkResults: async () => {
+        if (!API_KEY) return { success: false, message: 'API Key missing' };
+
+        // Get LIVE or recently started matches
+        const { data: fixtures } = await supabase
+            .from('fixtures')
+            .select('external_id')
+            .or('status.eq.LIVE,status.eq.NOT_STARTED')
+            .not('external_id', 'is', null);
+
+        // API-Football allows fetching multiple ids: id=1-2-3
+        // But let's do simple loop for now or use the 'live' endpoint
+
+        // Better approach: Fetch ALL live matches from API and update matching ones in DB
+        try {
+            const response = await fetch(`${BASE_URL}/fixtures?live=all`, {
+                headers: { 'x-apisports-key': API_KEY }
+            });
+            const json = await response.json();
+            const liveMatches = json.response || [];
+
+            let updatedCount = 0;
+
+            for (const match of liveMatches) {
+                const { fixture, goals, status } = match;
+
+                // Only update if we have this match in our DB
+                const { error } = await supabase
+                    .from('fixtures')
+                    .update({
+                        score: `${goals.home}-${goals.away}`,
+                        status: 'LIVE',
+                        // minute: fixture.status.elapsed // We could add a minute column later
+                    })
+                    .eq('external_id', fixture.id);
+
+                if (!error) updatedCount++;
+            }
+
+            return { success: true, message: `Synced ${updatedCount} live matches.` };
+
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
     }
 };
