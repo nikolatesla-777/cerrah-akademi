@@ -121,171 +121,196 @@ export default function BulletinPage() {
 
             {loading ? (
                 <div className="loading">Yükleniyor...</div>
-            ) : sortedLeagues.length === 0 ? (
-                <div className="empty-state">Maç bulunamadı.</div>
-            ) : (
-                <div className="fixtures-list">
-                    {sortedLeagues.map(([league, matches]) => (
-                        <div key={league} className="league-group">
-                            <div className="league-header">
-                                <div className="league-info">
-                                    <span className="flag-icon">⚽</span>
-                                    <span className="league-name">{league}</span>
-                                </div>
-                                <a href="#" className="standings-link">Puan Durumu</a>
+                    {['ALL', 'LIVE', 'FINISHED', 'SCHEDULED'].map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                    >
+                        {tab === 'ALL' && 'TÜMÜ'}
+                        {tab === 'LIVE' && 'CANLI'}
+                        {tab === 'FINISHED' && 'BİTMİŞ'}
+                        {tab === 'SCHEDULED' && 'PROGRAM'}
+                    </button>
+                ))}
+        </div>
+            </div >
+
+        {/* Matches List */ }
+        < div className = "matches-list" >
+        {
+            loading?(
+                    <div className = "loading" > Yükleniyor...</div>
+                ) : filterFixtures().length === 0 ? (
+        <div className="empty-state">Maç bulunamadı.</div>
+    ) : (
+        Object.entries(groupedFixtures).map(([leagueName, matches]) => (
+            <div key={leagueName} className="league-group">
+                <div className="league-header">
+                    <span className="star-icon">☆</span>
+                    <span className="league-name">{leagueName}</span>
+                </div>
+                {matches.map((match) => (
+                    <div key={match.id} className="match-row">
+                        <div className="match-status-col">
+                            <span className="star-icon-row">☆</span>
+                            {match.status === 'LIVE' ? (
+                                <span className="live-minute">{match.minute}'</span>
+                            ) : match.status === 'FINISHED' ? (
+                                <span className="status-finished">MS</span>
+                            ) : (
+                                <span className="match-time">
+                                    {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="match-teams-col">
+                            <div className={`team home ${match.score && match.score !== '-' && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
+                                {match.home_team_logo && <img src={match.home_team_logo} alt="" className="team-logo" />}
+                                <span className="team-name">{match.home_team}</span>
                             </div>
-                            <div className="matches-rows">
-                                {matches.map(match => (
-                                    <div key={match.id} className={`match-row ${match.status === 'LIVE' ? 'live' : ''}`}>
-
-                                        {/* Favorite Star */}
-                                        <div className="col-star" onClick={() => toggleFavorite(match.id)}>
-                                            <span className={`star-icon ${favorites.includes(match.id) ? 'active' : ''}`}>
-                                                {favorites.includes(match.id) ? '★' : '☆'}
-                                            </span>
-                                        </div>
-
-                                        {/* Status / Time */}
-                                        <div className="col-status">
-                                            {match.status === 'LIVE' ? (
-                                                <span className="status-live">Canlı</span>
-                                            ) : match.status === 'FINISHED' ? (
-                                                <span className="status-finished">Bitti</span>
-                                            ) : (
-                                                <span className="match-time">
-                                                    {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Teams & Score */}
-                                        <div className="col-match">
-                                            <div className={`team home ${match.score && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
-                                                {match.home_team}
-                                            </div>
-                                            <div className="score-box">
-                                                {match.status === 'NOT_STARTED' ? '-' : match.score}
-                                            </div>
-                                            <div className={`team away ${match.score && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
-                                                {match.away_team}
-                                            </div>
-                                        </div>
-
-                                        {/* Odds */}
-                                        <div className="col-odds">
-                                            <div className="odd-btn" title="1">
-                                                <span className="val">{match.odds?.['1'] || '-'}</span>
-                                            </div>
-                                            <div className="odd-btn" title="X">
-                                                <span className="val">{match.odds?.['X'] || '-'}</span>
-                                            </div>
-                                            <div className="odd-btn" title="2">
-                                                <span className="val">{match.odds?.['2'] || '-'}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className={`team away ${match.score && match.score !== '-' && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
+                                {match.away_team_logo && <img src={match.away_team_logo} alt="" className="team-logo" />}
+                                <span className="team-name">{match.away_team}</span>
                             </div>
                         </div>
-                    ))}
-                </div>
-            )}
 
-            <style jsx>{`
-                .bulletin-page {
-                    max-width: 900px;
-                    margin: 0 auto;
-                    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        <div className="match-score-col">
+                            {match.status === 'NOT_STARTED' ? (
+                                <span className="vs">-</span>
+                            ) : (
+                                <div className="score-box">
+                                    <span className="score-home">{match.score.split('-')[0]}</span>
+                                    <span className="score-divider">-</span>
+                                    <span className="score-away">{match.score.split('-')[1]}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Placeholder for Odds/More button */}
+                        <div className="match-actions-col">
+                            <button className="detail-btn">Detay</button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        ))
+    )
+}
+            </div >
+
+    <style jsx>{`
+                .bulletin-container {
+                    background-color: #0f172a; /* Dark background like Flashscore */
+                    min-height: 100vh;
                     color: #e2e8f0;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 }
 
-                /* Filter Bar */
-                .filter-bar {
-                    background: #1e293b;
-                    border-radius: 8px;
-                    padding: 0.5rem;
+                .bulletin-header {
+                    background-color: #1e293b;
+                    padding: 1rem;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                    border-bottom: 1px solid #334155;
+                }
+
+                .date-nav {
                     display: flex;
-                    justify-content: space-between;
+                    justify-content: center;
                     align-items: center;
-                    margin-bottom: 1rem;
-                    flex-wrap: wrap;
                     gap: 1rem;
+                    margin-bottom: 1rem;
                 }
 
-                .tabs { display: flex; gap: 0.25rem; }
-                .tabs button {
+                .nav-btn {
+                    background: none;
+                    border: none;
+                    color: #94a3b8;
+                    font-size: 1.2rem;
+                    cursor: pointer;
+                    padding: 0.5rem;
+                }
+
+                .nav-btn:hover {
+                    color: #fff;
+                }
+
+                .current-date {
+                    text-align: center;
+                }
+
+                .day {
+                    display: block;
+                    font-weight: 700;
+                    font-size: 1.1rem;
+                    color: #fff;
+                }
+
+                .full-date {
+                    font-size: 0.8rem;
+                    color: #94a3b8;
+                }
+
+                .tabs {
+                    display: flex;
+                    justify-content: center;
+                    gap: 0.5rem;
+                }
+
+                .tab-btn {
                     background: transparent;
                     border: none;
                     color: #94a3b8;
-                    font-weight: 600;
-                    font-size: 0.85rem;
                     padding: 0.5rem 1rem;
                     cursor: pointer;
-                    border-radius: 4px;
+                    font-weight: 600;
+                    border-bottom: 2px solid transparent;
                     transition: all 0.2s;
                 }
-                .tabs button:hover { color: #fff; background: rgba(255,255,255,0.05); }
-                .tabs button.active { background: #ef4444; color: #fff; }
 
-                .date-selector {
-                    display: flex;
-                    align-items: center;
-                    background: #0f172a;
-                    border-radius: 4px;
-                    padding: 0.25rem;
+                .tab-btn.active {
+                    color: #22c55e; /* Green accent */
+                    border-bottom-color: #22c55e;
                 }
-                .date-selector button {
-                    background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0 0.5rem; font-size: 1.2rem;
-                }
-                .current-date { font-size: 0.85rem; font-weight: 600; color: #fff; margin: 0 0.5rem; }
 
-                /* League Group */
+                .matches-list {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 1rem 0;
+                }
+
                 .league-group {
-                    margin-bottom: 0.5rem;
-                    background: #fff; /* Flashscore uses white/light bg for rows usually, but we are dark mode */
+                    margin-bottom: 1rem;
                     background: #1e293b;
-                    border-radius: 4px;
+                    border-radius: 8px;
                     overflow: hidden;
                 }
+
                 .league-header {
-                    background: #0f172a; /* Darker header */
-                    padding: 0.4rem 0.8rem;
+                    background: #334155;
+                    padding: 0.5rem 1rem;
                     display: flex;
-                    justify-content: space-between;
                     align-items: center;
-                    border-bottom: 1px solid #334155;
-                }
-                .league-info { display: flex; align-items: center; gap: 0.5rem; }
-                .league-name { font-weight: 700; font-size: 0.8rem; color: #f1f5f9; text-transform: uppercase; }
-                .standings-link { font-size: 0.75rem; color: #94a3b8; text-decoration: none; }
-                .standings-link:hover { text-decoration: underline; }
-
-                /* Match Row */
-                .match-row {
-                    display: grid;
-                    grid-template-columns: 30px 50px 1fr 120px; /* Star | Time | Match | Odds */
-                    align-items: center;
-                    padding: 0.5rem 0.8rem;
-                    border-bottom: 1px solid #334155;
+                    gap: 0.5rem;
                     font-size: 0.85rem;
-                    height: 40px; /* Tighter row */
+                    font-weight: 700;
+                    color: #cbd5e1;
+                    text-transform: uppercase;
                 }
-                .match-row:last-child { border-bottom: none; }
-                .match-row:hover { background: #263345; }
-                
-                /* Live State */
-                .match-row.live { background: rgba(239, 68, 68, 0.08); }
-                .match-row.live .status-live { color: #ef4444; }
-                .match-row.live .score-box { color: #ef4444; }
 
-                /* Columns */
-                .col-star { cursor: pointer; display: flex; justify-content: center; }
-                .star-icon { color: #475569; font-size: 1.1rem; transition: color 0.2s; }
-                .star-icon.active { color: #fbbf24; } /* Gold star */
-                .star-icon:hover { color: #fbbf24; }
-
-                .col-status { text-align: center; color: #94a3b8; font-size: 0.75rem; }
+                .star-icon {
+                    color: #64748b;
+                    cursor: pointer;
+                }
                 
+                .star-icon:hover {
+                    color: #fbbf24;
+                }
+
+                .match-row {
                 .col-match { display: flex; align-items: center; justify-content: center; gap: 0.8rem; }
                 .team { flex: 1; color: #cbd5e1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .team.home { text-align: right; }
@@ -335,6 +360,6 @@ export default function BulletinPage() {
                     .odd-btn { width: 30%; height: 32px; background: #273548; }
                 }
             `}</style>
-        </div>
+        </div >
     );
 }
