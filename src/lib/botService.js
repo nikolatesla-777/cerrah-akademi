@@ -64,45 +64,39 @@ export const BotService = {
 
             if (liveJson.response) {
                 for (const match of liveJson.response) {
-                    // Only import if it's in our target leagues OR if we want to show everything live
-                    // For now, let's filter by our LEAGUES list to avoid clutter, 
-                    // OR import everything if user wants global live coverage.
-                    // Let's stick to LEAGUES for now to keep it clean, but log count.
-                    if (LEAGUES.includes(match.league.id)) {
-                        await upsertMatch(match);
-                        totalImported++;
-                    }
+                    // Import EVERYTHING. No filtering.
+                    await upsertMatch(match);
+                    totalImported++;
                 }
             }
 
-            // STRATEGY 2: Fetch Schedule for Today & Tomorrow (Selected Leagues)
-            // Use season=2024 for current European season (started in 2024)
+            // STRATEGY 2: Fetch Global Schedule for Today & Tomorrow
+            // We fetch ALL matches for the given dates. No league filtering.
             const datesToFetch = [today, tomorrow];
 
             for (const date of datesToFetch) {
-                for (const leagueId of LEAGUES) {
-                    const url = `${BASE_URL}/fixtures?date=${date}&league=${leagueId}&season=2024`;
-                    const response = await fetch(url, {
-                        headers: { 'x-apisports-key': API_KEY }
-                    });
+                // Fetch all fixtures for this date (Global)
+                const url = `${BASE_URL}/fixtures?date=${date}`;
+                const response = await fetch(url, {
+                    headers: { 'x-apisports-key': API_KEY }
+                });
 
-                    const json = await response.json();
+                const json = await response.json();
 
-                    if (json.errors && Object.keys(json.errors).length > 0) {
-                        console.error(`API Error for League ${leagueId}:`, json.errors);
-                        continue;
-                    }
+                if (json.errors && Object.keys(json.errors).length > 0) {
+                    console.error(`API Error for Date ${date}:`, json.errors);
+                    continue;
+                }
 
-                    const matches = json.response || [];
+                const matches = json.response || [];
 
-                    for (const match of matches) {
-                        await upsertMatch(match);
-                        totalImported++;
-                    }
+                for (const match of matches) {
+                    await upsertMatch(match);
+                    totalImported++;
                 }
             }
 
-            return { success: true, message: `Imported ${totalImported} matches.` };
+            return { success: true, message: `Imported ${totalImported} matches (Global).` };
         } catch (error) {
             console.error('Bot Error:', error);
             return { success: false, message: error.message };
