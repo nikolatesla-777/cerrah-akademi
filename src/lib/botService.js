@@ -83,9 +83,10 @@ export const BotService = {
                 }
             }
 
-            // STRATEGY 2: Fetch Global Schedule for Today & Tomorrow
+            // STRATEGY 2: Fetch Global Schedule for Yesterday, Today & Tomorrow
             // We fetch ALL matches for the given dates. No league filtering.
-            const datesToFetch = [today, tomorrow];
+            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+            const datesToFetch = [yesterday, today, tomorrow];
 
             for (const date of datesToFetch) {
                 // Fetch all fixtures for this date (Global)
