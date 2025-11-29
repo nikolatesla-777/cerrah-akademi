@@ -2,61 +2,46 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function WinningPredictionsSlider() {
-    // Mock Data for Winning Predictions (Sorted by Time)
-    const winningPredictions = [
-        {
-            id: 1,
-            user: "orancerrahi",
-            match: "Galatasaray - Fenerbahçe",
-            time: "20:00",
-            date: "26 Kas",
-            pick: "MS 1",
-            odds: 2.10,
-            league: "Süper Lig"
-        },
-        {
-            id: 2,
-            user: "bahisdoktoru",
-            match: "Real Madrid - Barcelona",
-            time: "22:00",
-            date: "26 Kas",
-            pick: "KG Var",
-            odds: 1.70,
-            league: "La Liga"
-        },
-        {
-            id: 3,
-            user: "analizuzmani",
-            match: "Man City - Liverpool",
-            time: "18:30",
-            date: "26 Kas",
-            pick: "Üst 2.5",
-            odds: 1.85,
-            league: "Premier League"
-        },
-        {
-            id: 4,
-            user: "bankocu",
-            match: "Lakers - Warriors",
-            time: "03:30",
-            date: "27 Kas",
-            pick: "Üst 220.5",
-            odds: 1.85,
-            league: "NBA"
-        },
-        {
-            id: 5,
-            user: "kazandiran",
-            match: "Bayern - Dortmund",
-            time: "19:30",
-            date: "26 Kas",
-            pick: "MS 1",
-            odds: 1.55,
-            league: "Bundesliga"
+    const [winningPredictions, setWinningPredictions] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchWinners() {
+            const { data, error } = await supabase
+                .from('predictions')
+                .select(`
+                    id,
+                    match_name,
+                    selection,
+                    odds,
+                    status,
+                    user:users(username)
+                `)
+                .eq('status', 'WON')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (data) {
+                setWinningPredictions(data.map(p => ({
+                    id: p.id,
+                    user: p.user?.username || 'Anonim',
+                    match: p.match_name,
+                    time: '', // We might need to store match time in predictions or fetch it
+                    date: '',
+                    pick: p.selection,
+                    odds: p.odds,
+                    league: '' // We might need to store league
+                })));
+            }
+            setLoading(false);
         }
-    ];
+        fetchWinners();
+    }, []);
+
+    if (loading || winningPredictions.length === 0) return null; // Hide if no winners
 
     // Duplicate data for seamless infinite scroll
     const sliderData = [...winningPredictions, ...winningPredictions];
