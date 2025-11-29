@@ -61,11 +61,15 @@ export default function BulletinPage() {
             filtered = filtered.filter(f => f.status === 'NOT_STARTED');
         }
 
-        // 2. Date Filter (Simplified for now - strictly matching day)
-        // In a real app, we'd compare dates properly. For this demo, we might skip strict date filtering 
-        // if the mock data dates are random, but let's try to be somewhat realistic or just show all for 'ALL'.
-        // For now, let's keep it simple: Tabs control status. Date picker is visual/functional placeholder 
-        // or filters if we had real date data spanning multiple days.
+        // 2. Date Filter
+        if (activeTab !== 'LIVE') { // Don't filter by date if looking at LIVE tab
+            const selDateStr = selectedDate.toISOString().split('T')[0];
+            filtered = filtered.filter(f => {
+                if (!f.match_time) return false;
+                const matchDateStr = new Date(f.match_time).toISOString().split('T')[0];
+                return matchDateStr === selDateStr;
+            });
+        }
 
         return filtered;
     };
