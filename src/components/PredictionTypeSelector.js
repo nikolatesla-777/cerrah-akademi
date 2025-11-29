@@ -5,66 +5,77 @@ import { getPredictionTypes } from '@/lib/fixtures';
 
 export default function PredictionTypeSelector({ selectedFixture, onSelectPrediction }) {
   const [selectedType, setSelectedType] = useState('');
-  const [odds, setOdds] = useState(null);
-
-  const predictionTypes = getPredictionTypes();
+  const [activeCategory, setActiveCategory] = useState('MAIN'); // MAIN, GOALS, OTHER
 
   useEffect(() => {
-    // Reset when fixture changes
     setSelectedType('');
-    setOdds(null);
   }, [selectedFixture]);
 
-  const handleSelect = (type) => {
+  const handleSelect = (type, value) => {
     setSelectedType(type);
+    onSelectPrediction({
+      type,
+      odds: value
+    });
+  };
 
-    // Get odds for selected prediction type
-    if (selectedFixture && selectedFixture.odds[type]) {
-      const oddValue = selectedFixture.odds[type];
-      setOdds(oddValue);
-      onSelectPrediction({
-        type,
-        odds: oddValue
-      });
-    } else {
-      setOdds(null);
-      onSelectPrediction({ type, odds: null });
-    }
+  if (!selectedFixture) {
+    return <p className="helper-text">Önce bir maç seçin</p>;
+  }
+
+  const odds = selectedFixture.odds || {};
+
+  // Group odds by category
+  const categories = {
+    MAIN: ['MS 1', 'MS X', 'MS 2', '1X', '12', 'X2'],
+    GOALS: ['2.5 Üst', '2.5 Alt', 'KG Var', 'KG Yok'],
+  };
+
+  const renderButtons = (categoryKeys) => {
+    return categoryKeys.map(key => {
+      const val = odds[key];
+      return (
+        <button
+          type="button"
+          key={key}
+          className={`prediction-btn ${selectedType === key ? 'selected' : ''} ${!val ? 'disabled' : ''}`}
+          onClick={() => val && handleSelect(key, val)}
+          disabled={!val}
+        >
+          <span className="type-label">{key}</span>
+          <span className="type-odds">{val ? parseFloat(val).toFixed(2) : '-'}</span>
+        </button>
+      );
+    });
   };
 
   return (
     <div className="prediction-selector">
-      <label htmlFor="prediction-type">Tahmin Tipi</label>
-
-      <div className="prediction-grid">
-        {predictionTypes.map((type) => {
-          const isAvailable = selectedFixture && selectedFixture.odds[type];
-          const oddValue = isAvailable ? selectedFixture.odds[type] : null;
-
-          return (
-            <button
-              type="button"
-              key={type}
-              className={`prediction-btn ${selectedType === type ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
-              onClick={() => isAvailable && handleSelect(type)}
-              disabled={!isAvailable}
-            >
-              <span className="type-label">{type}</span>
-              {oddValue && (
-                <span className="type-odds">{oddValue.toFixed(2)}</span>
-              )}
-            </button>
-          );
-        })}
+      <div className="category-tabs">
+        <button
+          type="button"
+          className={`tab-btn ${activeCategory === 'MAIN' ? 'active' : ''}`}
+          onClick={() => setActiveCategory('MAIN')}
+        >
+          Maç Sonucu
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeCategory === 'GOALS' ? 'active' : ''}`}
+          onClick={() => setActiveCategory('GOALS')}
+        >
+          Gol / KG
+        </button>
       </div>
 
-      {!selectedFixture && (
-        <p className="helper-text">Önce bir maç seçin</p>
-      )}
+      <div className="prediction-grid">
+        {activeCategory === 'MAIN' && renderButtons(categories.MAIN)}
+        {activeCategory === 'GOALS' && renderButtons(categories.GOALS)}
+      </div>
 
-      {selectedType && odds && (
+      {selectedType && (
         <div className="selected-info">
-          <strong>Seçilen:</strong> {selectedType} @ {odds.toFixed(2)}
+          <strong>Seçilen:</strong> {selectedType} @ {odds[selectedType]?.toFixed(2)}
         </div>
       )}
 
@@ -72,17 +83,35 @@ export default function PredictionTypeSelector({ selectedFixture, onSelectPredic
         .prediction-selector {
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 1rem;
         }
 
-        label {
-          font-weight: 500;
-          color: #d4d4d4;
+        .category-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: #888;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
         }
 
         .prediction-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
           gap: 0.75rem;
         }
 
@@ -92,7 +121,7 @@ export default function PredictionTypeSelector({ selectedFixture, onSelectPredic
           align-items: center;
           padding: 0.75rem;
           background: var(--surface);
-          border: 2px solid var(--border);
+          border: 1px solid var(--border);
           border-radius: 0.5rem;
           cursor: pointer;
           transition: all 0.2s;
@@ -101,29 +130,31 @@ export default function PredictionTypeSelector({ selectedFixture, onSelectPredic
 
         .prediction-btn:hover:not(.disabled) {
           border-color: var(--primary);
-          transform: translateY(-2px);
+          background: var(--surface-hover);
         }
 
         .prediction-btn.selected {
           border-color: var(--primary);
           background: rgba(34, 197, 94, 0.1);
+          box-shadow: 0 0 0 1px var(--primary);
         }
 
         .prediction-btn.disabled {
           opacity: 0.4;
           cursor: not-allowed;
+          background: rgba(0,0,0,0.2);
         }
 
         .type-label {
           font-weight: 600;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           margin-bottom: 0.25rem;
         }
 
         .type-odds {
           color: var(--accent);
           font-weight: 700;
-          font-size: 1.1rem;
+          font-size: 1rem;
         }
 
         .helper-text {
@@ -139,6 +170,8 @@ export default function PredictionTypeSelector({ selectedFixture, onSelectPredic
           border-radius: 0.5rem;
           text-align: center;
           color: var(--primary);
+          margin-top: 0.5rem;
+          font-weight: 600;
         }
       `}</style>
     </div>

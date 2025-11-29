@@ -23,17 +23,29 @@ export default function MatchSearchAutocomplete({ onSelectMatch, selectedMatch }
 
     // Search with debounce
     useEffect(() => {
-        if (query.length < 2) {
+        if (query.length < 3) { // Increased min length to 3 for better performance
             setResults([]);
             setIsOpen(false);
             return;
         }
 
-        const timer = setTimeout(() => {
-            const searchResults = searchFixtures(query);
-            setResults(searchResults);
-            setIsOpen(searchResults.length > 0);
-        }, 300);
+        const timer = setTimeout(async () => {
+            // Search in Supabase
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+            const { data, error } = await supabase
+                .from('fixtures')
+                .select('*')
+                .or(`home_team.ilike.%${query}%,away_team.ilike.%${query}%`)
+                .eq('status', 'NOT_STARTED') // Only show upcoming matches for prediction
+                .limit(10);
+
+            if (!error && data) {
+                setResults(data);
+                setIsOpen(data.length > 0);
+            }
+        }, 500); // Increased debounce to 500ms
 
         return () => clearTimeout(timer);
     }, [query]);

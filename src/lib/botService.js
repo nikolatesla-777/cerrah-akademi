@@ -116,21 +116,50 @@ export const BotService = {
                     const bet365 = bookmakers.find(b => b.id === 1) || bookmakers[0]; // Prefer Bet365
 
                     if (bet365) {
-                        const matchWinner = bet365.bets.find(b => b.id === 1); // Id 1 is usually Match Winner
+                        const getMarket = (id) => bet365.bets.find(b => b.id === id);
+
+                        // 1: Match Winner
+                        const matchWinner = getMarket(1);
+                        // 5: Goals Over/Under (usually 2.5 is the standard line, but API returns all lines. We need to find 2.5)
+                        const goalsOverUnder = getMarket(5);
+                        // 8: Both Teams Score
+                        const btts = getMarket(8);
+                        // 12: Double Chance
+                        const doubleChance = getMarket(12);
+
+                        const odds = {};
+
                         if (matchWinner) {
-                            const odds = {
-                                '1': matchWinner.values.find(v => v.value === 'Home')?.odd,
-                                'X': matchWinner.values.find(v => v.value === 'Draw')?.odd,
-                                '2': matchWinner.values.find(v => v.value === 'Away')?.odd
-                            };
-
-                            await supabase
-                                .from('fixtures')
-                                .update({ odds })
-                                .eq('external_id', f.external_id);
-
-                            updatedCount++;
+                            odds['MS 1'] = matchWinner.values.find(v => v.value === 'Home')?.odd;
+                            odds['MS X'] = matchWinner.values.find(v => v.value === 'Draw')?.odd;
+                            odds['MS 2'] = matchWinner.values.find(v => v.value === 'Away')?.odd;
                         }
+
+                        if (goalsOverUnder) {
+                            // Find 2.5 line
+                            const over25 = goalsOverUnder.values.find(v => v.value === 'Over 2.5');
+                            const under25 = goalsOverUnder.values.find(v => v.value === 'Under 2.5');
+                            if (over25) odds['2.5 Üst'] = over25.odd;
+                            if (under25) odds['2.5 Alt'] = under25.odd;
+                        }
+
+                        if (btts) {
+                            odds['KG Var'] = btts.values.find(v => v.value === 'Yes')?.odd;
+                            odds['KG Yok'] = btts.values.find(v => v.value === 'No')?.odd;
+                        }
+
+                        if (doubleChance) {
+                            odds['1X'] = doubleChance.values.find(v => v.value === 'Home/Draw')?.odd;
+                            odds['12'] = doubleChance.values.find(v => v.value === 'Home/Away')?.odd;
+                            odds['X2'] = doubleChance.values.find(v => v.value === 'Draw/Away')?.odd;
+                        }
+
+                        await supabase
+                            .from('fixtures')
+                            .update({ odds })
+                            .eq('external_id', f.external_id);
+
+                        updatedCount++;
                     }
                 }
             } catch (e) {

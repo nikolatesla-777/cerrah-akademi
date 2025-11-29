@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import MatchSearchAutocomplete from '@/components/MatchSearchAutocomplete';
 import PredictionTypeSelector from '@/components/PredictionTypeSelector';
-import { formatMatchName } from '@/lib/fixtures';
 import { useAuth } from '@/components/LayoutShell';
 import { savePrediction } from '@/lib/storage';
 
