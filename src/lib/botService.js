@@ -32,6 +32,7 @@ async function upsertMatch(match) {
 
     // Prepare Data
     const fixtureData = {
+        id: String(fixture.id), // Use API ID as internal ID (Deterministic & Stable)
         external_id: fixture.id,
         home_team: teams.home.name,
         away_team: teams.away.name,
