@@ -13,6 +13,35 @@ const LEAGUES = [
     61   // Ligue 1 (FR)
 ];
 
+// Helper to upsert match into DB
+async function upsertMatch(match) {
+    const { fixture, teams, goals, league, status } = match;
+
+    // Map Status
+    let dbStatus = 'NOT_STARTED';
+    const shortStatus = status?.short;
+
+    if (['1H', 'HT', '2H', 'ET', 'P', 'BT'].includes(shortStatus)) dbStatus = 'LIVE';
+    else if (['FT', 'AET', 'PEN'].includes(shortStatus)) dbStatus = 'FINISHED';
+    else if (['PST', 'CANC', 'ABD'].includes(shortStatus)) dbStatus = 'CANCELLED';
+
+    // Prepare Data
+    const fixtureData = {
+        external_id: fixture.id,
+        home_team: teams.home.name,
+        away_team: teams.away.name,
+        league: league.name,
+        match_time: fixture.date,
+        status: dbStatus,
+        score: dbStatus === 'NOT_STARTED' ? '-' : `${goals.home ?? 0}-${goals.away ?? 0}`,
+    };
+
+    // Upsert into DB
+    await supabase
+        .from('fixtures')
+        .upsert(fixtureData, { onConflict: 'external_id' });
+}
+
 export const BotService = {
     // 1. Fetch Fixtures (Daily Program)
     fetchFixtures: async () => {
@@ -22,34 +51,42 @@ export const BotService = {
         }
 
         const today = new Date().toISOString().split('T')[0];
-        // Removed: let totalImported = 0; // This is now declared inside the try block
+        const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
+
+        let totalImported = 0;
 
         try {
-            // PRO PLAN: Fetch full daily schedule for selected leagues
-            // Now that we have the paid plan, we can fetch upcoming matches for season 2025.
+            // STRATEGY 1: Fetch ALL currently live matches (Global)
+            // This ensures we catch everything playing right now, regardless of league filters
+            const liveUrl = `${BASE_URL}/fixtures?live=all`;
+            const liveResponse = await fetch(liveUrl, { headers: { 'x-apisports-key': API_KEY } });
+            const liveJson = await liveResponse.json();
 
-            // If it's late (after 22:00), fetch tomorrow's matches too
-            const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
+            if (liveJson.response) {
+                for (const match of liveJson.response) {
+                    // Only import if it's in our target leagues OR if we want to show everything live
+                    // For now, let's filter by our LEAGUES list to avoid clutter, 
+                    // OR import everything if user wants global live coverage.
+                    // Let's stick to LEAGUES for now to keep it clean, but log count.
+                    if (LEAGUES.includes(match.league.id)) {
+                        await upsertMatch(match);
+                        totalImported++;
+                    }
+                }
+            }
+
+            // STRATEGY 2: Fetch Schedule for Today & Tomorrow (Selected Leagues)
+            // Use season=2024 for current European season (started in 2024)
             const datesToFetch = [today, tomorrow];
-
-            let totalImported = 0;
 
             for (const date of datesToFetch) {
                 for (const leagueId of LEAGUES) {
-                    const url = `${BASE_URL}/fixtures?date=${date}&league=${leagueId}&season=2025`;
+                    const url = `${BASE_URL}/fixtures?date=${date}&league=${leagueId}&season=2024`;
                     const response = await fetch(url, {
                         headers: { 'x-apisports-key': API_KEY }
                     });
 
                     const json = await response.json();
-
-                    // Debug log
-                    const fs = require('fs');
-                    const path = require('path');
-                    try {
-                        // Append to log instead of overwrite to see all leagues
-                        // fs.appendFileSync(path.join(process.cwd(), 'debug_log.json'), JSON.stringify({ leagueId, response: json }, null, 2));
-                    } catch (e) { console.error(e); }
 
                     if (json.errors && Object.keys(json.errors).length > 0) {
                         console.error(`API Error for League ${leagueId}:`, json.errors);
@@ -59,167 +96,143 @@ export const BotService = {
                     const matches = json.response || [];
 
                     for (const match of matches) {
-                        const { fixture, teams, goals, league, status } = match;
-
-                        // Map Status
-                        let dbStatus = 'NOT_STARTED';
-                        const shortStatus = status?.short;
-
-                        if (['1H', 'HT', '2H', 'ET', 'P', 'BT'].includes(shortStatus)) dbStatus = 'LIVE';
-                        else if (['FT', 'AET', 'PEN'].includes(shortStatus)) dbStatus = 'FINISHED';
-                        else if (['PST', 'CANC', 'ABD'].includes(shortStatus)) dbStatus = 'CANCELLED';
-
-                        // Prepare Data
-                        const fixtureData = {
-                            external_id: fixture.id,
-                            home_team: teams.home.name,
-                            away_team: teams.away.name,
-                            league: league.name,
-                            match_time: fixture.date,
-                            status: dbStatus,
-                            score: dbStatus === 'NOT_STARTED' ? '-' : `${goals.home ?? 0}-${goals.away ?? 0}`,
-                        };
-
-                        // Upsert into DB
-                        const { error } = await supabase
-                            .from('fixtures')
-                            .upsert(fixtureData, { onConflict: 'external_id' });
-
-                        if (!error) totalImported++;
+                        await upsertMatch(match);
+                        totalImported++;
                     }
                 }
-
-                return { success: true, message: `Imported ${totalImported} matches for today.` };
-            } catch (error) {
-                console.error('Bot Error:', error);
-                return { success: false, message: error.message };
             }
-        },
 
-        // 2. Update Odds (Periodically)
-        updateOdds: async () => {
-            if (!API_KEY) return { success: false, message: 'API Key missing' };
+            return { success: true, message: `Imported ${totalImported} matches.` };
+        } catch (error) {
+            console.error('Bot Error:', error);
+            return { success: false, message: error.message };
+        }
+    },
 
-            // Get upcoming matches from DB
-            const { data: fixtures } = await supabase
-                .from('fixtures')
-                .select('external_id')
-                .eq('status', 'NOT_STARTED')
-                .not('external_id', 'is', null)
-                .limit(10); // Batch limit to save API calls
+    // 2. Update Odds (Periodically)
+    updateOdds: async () => {
+        if (!API_KEY) return { success: false, message: 'API Key missing' };
+
+        // Get upcoming matches from DB
+        const { data: fixtures } = await supabase
+            .from('fixtures')
+            .select('external_id')
+            .eq('status', 'NOT_STARTED')
+            .not('external_id', 'is', null)
+            .limit(10); // Batch limit to save API calls
+
+        let updatedCount = 0;
+
+        for (const f of fixtures || []) {
+            try {
+                const response = await fetch(`${BASE_URL}/odds?fixture=${f.external_id}`, {
+                    headers: { 'x-apisports-key': API_KEY }
+                });
+                const json = await response.json();
+
+                if (json.response && json.response.length > 0) {
+                    const bookmakers = json.response[0].bookmakers;
+                    const bet365 = bookmakers.find(b => b.id === 1) || bookmakers[0]; // Prefer Bet365
+
+                    if (bet365) {
+                        const getMarket = (id) => bet365.bets.find(b => b.id === id);
+
+                        // 1: Match Winner
+                        const matchWinner = getMarket(1);
+                        // 5: Goals Over/Under (usually 2.5 is the standard line, but API returns all lines. We need to find 2.5)
+                        const goalsOverUnder = getMarket(5);
+                        // 8: Both Teams Score
+                        const btts = getMarket(8);
+                        // 12: Double Chance
+                        const doubleChance = getMarket(12);
+
+                        const odds = {};
+
+                        if (matchWinner) {
+                            odds['MS 1'] = matchWinner.values.find(v => v.value === 'Home')?.odd;
+                            odds['MS X'] = matchWinner.values.find(v => v.value === 'Draw')?.odd;
+                            odds['MS 2'] = matchWinner.values.find(v => v.value === 'Away')?.odd;
+                        }
+
+                        if (goalsOverUnder) {
+                            // Find 2.5 line
+                            const over25 = goalsOverUnder.values.find(v => v.value === 'Over 2.5');
+                            const under25 = goalsOverUnder.values.find(v => v.value === 'Under 2.5');
+                            if (over25) odds['2.5 Üst'] = over25.odd;
+                            if (under25) odds['2.5 Alt'] = under25.odd;
+                        }
+
+                        if (btts) {
+                            odds['KG Var'] = btts.values.find(v => v.value === 'Yes')?.odd;
+                            odds['KG Yok'] = btts.values.find(v => v.value === 'No')?.odd;
+                        }
+
+                        if (doubleChance) {
+                            odds['1X'] = doubleChance.values.find(v => v.value === 'Home/Draw')?.odd;
+                            odds['12'] = doubleChance.values.find(v => v.value === 'Home/Away')?.odd;
+                            odds['X2'] = doubleChance.values.find(v => v.value === 'Draw/Away')?.odd;
+                        }
+
+                        await supabase
+                            .from('fixtures')
+                            .update({ odds })
+                            .eq('external_id', f.external_id);
+
+                        updatedCount++;
+                    }
+                }
+            } catch (e) {
+                console.error(`Error updating odds for ${f.external_id}`, e);
+            }
+        }
+
+        return { success: true, message: `Updated odds for ${updatedCount} matches.` };
+    },
+
+    // 3. Check Results (Live Scores)
+    checkResults: async () => {
+        if (!API_KEY) return { success: false, message: 'API Key missing' };
+
+        // Get LIVE or recently started matches
+        const { data: fixtures } = await supabase
+            .from('fixtures')
+            .select('external_id')
+            .or('status.eq.LIVE,status.eq.NOT_STARTED')
+            .not('external_id', 'is', null);
+
+        // API-Football allows fetching multiple ids: id=1-2-3
+        // But let's do simple loop for now or use the 'live' endpoint
+
+        // Better approach: Fetch ALL live matches from API and update matching ones in DB
+        try {
+            const response = await fetch(`${BASE_URL}/fixtures?live=all`, {
+                headers: { 'x-apisports-key': API_KEY }
+            });
+            const json = await response.json();
+            const liveMatches = json.response || [];
 
             let updatedCount = 0;
 
-            for (const f of fixtures || []) {
-                try {
-                    const response = await fetch(`${BASE_URL}/odds?fixture=${f.external_id}`, {
-                        headers: { 'x-apisports-key': API_KEY }
-                    });
-                    const json = await response.json();
+            for (const match of liveMatches) {
+                const { fixture, goals, status } = match;
 
-                    if (json.response && json.response.length > 0) {
-                        const bookmakers = json.response[0].bookmakers;
-                        const bet365 = bookmakers.find(b => b.id === 1) || bookmakers[0]; // Prefer Bet365
-
-                        if (bet365) {
-                            const getMarket = (id) => bet365.bets.find(b => b.id === id);
-
-                            // 1: Match Winner
-                            const matchWinner = getMarket(1);
-                            // 5: Goals Over/Under (usually 2.5 is the standard line, but API returns all lines. We need to find 2.5)
-                            const goalsOverUnder = getMarket(5);
-                            // 8: Both Teams Score
-                            const btts = getMarket(8);
-                            // 12: Double Chance
-                            const doubleChance = getMarket(12);
-
-                            const odds = {};
-
-                            if (matchWinner) {
-                                odds['MS 1'] = matchWinner.values.find(v => v.value === 'Home')?.odd;
-                                odds['MS X'] = matchWinner.values.find(v => v.value === 'Draw')?.odd;
-                                odds['MS 2'] = matchWinner.values.find(v => v.value === 'Away')?.odd;
-                            }
-
-                            if (goalsOverUnder) {
-                                // Find 2.5 line
-                                const over25 = goalsOverUnder.values.find(v => v.value === 'Over 2.5');
-                                const under25 = goalsOverUnder.values.find(v => v.value === 'Under 2.5');
-                                if (over25) odds['2.5 Üst'] = over25.odd;
-                                if (under25) odds['2.5 Alt'] = under25.odd;
-                            }
-
-                            if (btts) {
-                                odds['KG Var'] = btts.values.find(v => v.value === 'Yes')?.odd;
-                                odds['KG Yok'] = btts.values.find(v => v.value === 'No')?.odd;
-                            }
-
-                            if (doubleChance) {
-                                odds['1X'] = doubleChance.values.find(v => v.value === 'Home/Draw')?.odd;
-                                odds['12'] = doubleChance.values.find(v => v.value === 'Home/Away')?.odd;
-                                odds['X2'] = doubleChance.values.find(v => v.value === 'Draw/Away')?.odd;
-                            }
-
-                            await supabase
-                                .from('fixtures')
-                                .update({ odds })
-                                .eq('external_id', f.external_id);
-
-                            updatedCount++;
-                        }
-                    }
-                } catch (e) {
-                    console.error(`Error updating odds for ${f.external_id}`, e);
-                }
-            }
-
-            return { success: true, message: `Updated odds for ${updatedCount} matches.` };
-        },
-
-            // 3. Check Results (Live Scores)
-            checkResults: async () => {
-                if (!API_KEY) return { success: false, message: 'API Key missing' };
-
-                // Get LIVE or recently started matches
-                const { data: fixtures } = await supabase
+                // Only update if we have this match in our DB
+                const { error } = await supabase
                     .from('fixtures')
-                    .select('external_id')
-                    .or('status.eq.LIVE,status.eq.NOT_STARTED')
-                    .not('external_id', 'is', null);
+                    .update({
+                        score: `${goals.home}-${goals.away}`,
+                        status: 'LIVE',
+                        // minute: fixture.status.elapsed // We could add a minute column later
+                    })
+                    .eq('external_id', fixture.id);
 
-                // API-Football allows fetching multiple ids: id=1-2-3
-                // But let's do simple loop for now or use the 'live' endpoint
-
-                // Better approach: Fetch ALL live matches from API and update matching ones in DB
-                try {
-                    const response = await fetch(`${BASE_URL}/fixtures?live=all`, {
-                        headers: { 'x-apisports-key': API_KEY }
-                    });
-                    const json = await response.json();
-                    const liveMatches = json.response || [];
-
-                    let updatedCount = 0;
-
-                    for (const match of liveMatches) {
-                        const { fixture, goals, status } = match;
-
-                        // Only update if we have this match in our DB
-                        const { error } = await supabase
-                            .from('fixtures')
-                            .update({
-                                score: `${goals.home}-${goals.away}`,
-                                status: 'LIVE',
-                                // minute: fixture.status.elapsed // We could add a minute column later
-                            })
-                            .eq('external_id', fixture.id);
-
-                        if (!error) updatedCount++;
-                    }
-
-                    return { success: true, message: `Synced ${updatedCount} live matches.` };
-
-                } catch (error) {
-                    return { success: false, message: error.message };
-                }
+                if (!error) updatedCount++;
             }
-    };
+
+            return { success: true, message: `Synced ${updatedCount} live matches.` };
+
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    }
+};
