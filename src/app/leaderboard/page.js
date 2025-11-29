@@ -1,23 +1,40 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function LeaderboardPage() {
-  // Mock data - top 3 for podium
-  const topThree = [
-    { rank: 2, username: "bahisdoktoru", winRate: 72, profit: 9800, followers: 850, avatar: "B" },
-    { rank: 1, username: "orancerrahi", winRate: 78, profit: 12500, followers: 1250, avatar: "O" },
-    { rank: 3, username: "analizuzmani", winRate: 68, profit: 8500, followers: 620, avatar: "A" },
-  ];
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Rest of the leaderboard
-  const restOfLeaders = [
-    { rank: 4, username: "bankocu", winRate: 65, profit: 7200, followers: 480, trend: "same" },
-    { rank: 5, username: "golmakinesi", winRate: 62, profit: 6400, followers: 390, trend: "up" },
-    { rank: 6, username: "tahminuzmani", winRate: 60, profit: 5800, followers: 310, trend: "down" },
-    { rank: 7, username: "betmaster", winRate: 58, profit: 5200, followers: 280, trend: "up" },
-    { rank: 8, username: "sporanaliz", winRate: 56, profit: 4900, followers: 250, trend: "same" },
-  ];
+  useEffect(() => {
+    async function fetchLeaderboard() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        // .order('profit', { ascending: false }) // Future: sort by profit
+        .order('login_count', { ascending: false }) // Temporary: sort by activity
+        .limit(50);
+
+      if (data) {
+        setUsers(data.map((u, index) => ({
+          rank: index + 1,
+          username: u.username || 'Anonim',
+          winRate: 0, // Placeholder until stats engine
+          profit: 0,  // Placeholder until stats engine
+          followers: 0, // Placeholder
+          avatar: (u.username || 'A')[0].toUpperCase(),
+          trend: 'same'
+        })));
+      }
+      setLoading(false);
+    }
+    fetchLeaderboard();
+  }, []);
+
+  const topThree = users.slice(0, 3);
+  const restOfLeaders = users.slice(3);
 
   return (
     <div className="leaderboard-container">
