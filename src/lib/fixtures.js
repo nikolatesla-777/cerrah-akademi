@@ -177,5 +177,8 @@ export function getPredictionTypes() {
 // Format match display name
 export function formatMatchName(fixture) {
     if (!fixture) return '';
-    return `${fixture.homeTeam} - ${fixture.awayTeam}`;
+    // Handle both camelCase (mock) and snake_case (Supabase)
+    const home = fixture.homeTeam || fixture.home_team;
+    const away = fixture.awayTeam || fixture.away_team;
+    return `${home} - ${away}`;
 }
