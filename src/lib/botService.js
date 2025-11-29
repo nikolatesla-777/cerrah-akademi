@@ -36,9 +36,13 @@ async function upsertMatch(match) {
         external_id: fixture.id,
         home_team: teams.home.name,
         away_team: teams.away.name,
+        home_team_logo: teams.home.logo,
+        away_team_logo: teams.away.logo,
         league: league.name,
+        league_logo: league.logo,
         match_time: fixture.date,
         status: dbStatus,
+        minute: fixture.status.elapsed, // Live minute
         score: dbStatus === 'NOT_STARTED' ? '-' : `${goals.home ?? 0}-${goals.away ?? 0}`,
     };
 
@@ -230,7 +234,7 @@ export const BotService = {
                     .update({
                         score: `${goals.home}-${goals.away}`,
                         status: 'LIVE',
-                        // minute: fixture.status.elapsed // We could add a minute column later
+                        minute: fixture.status.elapsed
                     })
                     .eq('external_id', fixture.id);
 
