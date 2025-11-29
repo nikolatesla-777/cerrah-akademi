@@ -96,7 +96,8 @@ export default function FeedPage() {
       // Let's update getPredictions in storage.js to join, OR handle it here.
       // Updating storage.js is better.
 
-      setPosts([...dbPredictions, ...mockPosts]);
+      // Only show DB predictions
+      setPosts(dbPredictions);
     };
 
     loadPredictions();

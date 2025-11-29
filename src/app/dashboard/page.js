@@ -46,7 +46,7 @@ export default function DashboardPage() {
     ];
 
     // Combine them, prioritizing user's predictions
-    setActivePredictions([...myPendingPredictions, ...mockActivePredictions]);
+    setActivePredictions(myPendingPredictions);
     setLoading(false);
   }, []);
 
