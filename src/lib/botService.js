@@ -42,9 +42,15 @@ async function upsertMatch(match) {
     };
 
     // Upsert into DB
-    await supabase
+    const { error } = await supabase
         .from('fixtures')
         .upsert(fixtureData, { onConflict: 'external_id' });
+
+    if (error) {
+        console.error('Supabase Upsert Error:', error.message, fixtureData);
+    } else {
+        // console.log('Imported:', fixtureData.home_team, '-', fixtureData.away_team);
+    }
 }
 
 export const BotService = {
