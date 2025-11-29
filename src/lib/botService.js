@@ -1,6 +1,11 @@
-import { supabase } from './supabase';
+import { createClient } from '@supabase/supabase-js';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_FOOTBALL_KEY;
+// Create a Supabase client with the SERVICE ROLE key for admin access (writing to DB)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; // Fallback to anon (will fail if RLS blocks)
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 // League IDs (API-Football)
@@ -45,6 +50,7 @@ async function upsertMatch(match) {
 export const BotService = {
     // 1. Fetch Fixtures (Daily Program)
     fetchFixtures: async () => {
+        const API_KEY = process.env.NEXT_PUBLIC_API_FOOTBALL_KEY;
         if (!API_KEY) {
             console.error('API Key missing! Add NEXT_PUBLIC_API_FOOTBALL_KEY to .env.local');
             return { success: false, message: 'API Key missing' };
