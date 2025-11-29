@@ -25,65 +25,66 @@ export const BotService = {
         // Removed: let totalImported = 0; // This is now declared inside the try block
 
         try {
-            // FREE PLAN STRATEGY: Fetch ONLY currently live matches
-            // The Free plan blocks 'season=2025' for full schedule, but allows 'live=all'.
+            // PRO PLAN: Fetch full daily schedule for selected leagues
+            // Now that we have the paid plan, we can fetch upcoming matches for season 2025.
 
-            const url = `${BASE_URL}/fixtures?live=all`;
-            const response = await fetch(url, {
-                headers: { 'x-apisports-key': API_KEY }
-            });
-
-            const json = await response.json();
-
-            // Debug log
-            const fs = require('fs');
-            const path = require('path');
-            try {
-                fs.writeFileSync(path.join(process.cwd(), 'debug_log.json'), JSON.stringify(json, null, 2));
-            } catch (e) { console.error(e); }
-
-            if (json.errors && Object.keys(json.errors).length > 0) {
-                console.error('API Error:', json.errors);
-                return { success: false, message: 'API Error', errors: json.errors };
-            }
-
-            const matches = json.response || [];
             let totalImported = 0;
 
-            for (const match of matches) {
-                const { fixture, teams, goals, league, status } = match;
+            for (const leagueId of LEAGUES) {
+                const url = `${BASE_URL}/fixtures?date=${today}&league=${leagueId}&season=2025`;
+                const response = await fetch(url, {
+                    headers: { 'x-apisports-key': API_KEY }
+                });
 
-                // Optional: Filter by specific leagues if needed, but for now let's import all to show data
-                // if (!LEAGUES.includes(league.id)) continue;
+                const json = await response.json();
 
-                // Map Status
-                let dbStatus = 'NOT_STARTED';
-                const shortStatus = status?.short;
+                // Debug log
+                const fs = require('fs');
+                const path = require('path');
+                try {
+                    // Append to log instead of overwrite to see all leagues
+                    // fs.appendFileSync(path.join(process.cwd(), 'debug_log.json'), JSON.stringify({ leagueId, response: json }, null, 2));
+                } catch (e) { console.error(e); }
 
-                if (['1H', 'HT', '2H', 'ET', 'P', 'BT'].includes(shortStatus)) dbStatus = 'LIVE';
-                else if (['FT', 'AET', 'PEN'].includes(shortStatus)) dbStatus = 'FINISHED';
-                else if (['PST', 'CANC', 'ABD'].includes(shortStatus)) dbStatus = 'CANCELLED';
+                if (json.errors && Object.keys(json.errors).length > 0) {
+                    console.error(`API Error for League ${leagueId}:`, json.errors);
+                    continue;
+                }
 
-                // Prepare Data
-                const fixtureData = {
-                    external_id: fixture.id,
-                    home_team: teams.home.name,
-                    away_team: teams.away.name,
-                    league: league.name,
-                    match_time: fixture.date,
-                    status: dbStatus,
-                    score: `${goals.home ?? 0}-${goals.away ?? 0}`,
-                };
+                const matches = json.response || [];
 
-                // Upsert into DB
-                const { error } = await supabase
-                    .from('fixtures')
-                    .upsert(fixtureData, { onConflict: 'external_id' });
+                for (const match of matches) {
+                    const { fixture, teams, goals, league, status } = match;
 
-                if (!error) totalImported++;
+                    // Map Status
+                    let dbStatus = 'NOT_STARTED';
+                    const shortStatus = status?.short;
+
+                    if (['1H', 'HT', '2H', 'ET', 'P', 'BT'].includes(shortStatus)) dbStatus = 'LIVE';
+                    else if (['FT', 'AET', 'PEN'].includes(shortStatus)) dbStatus = 'FINISHED';
+                    else if (['PST', 'CANC', 'ABD'].includes(shortStatus)) dbStatus = 'CANCELLED';
+
+                    // Prepare Data
+                    const fixtureData = {
+                        external_id: fixture.id,
+                        home_team: teams.home.name,
+                        away_team: teams.away.name,
+                        league: league.name,
+                        match_time: fixture.date,
+                        status: dbStatus,
+                        score: dbStatus === 'NOT_STARTED' ? '-' : `${goals.home ?? 0}-${goals.away ?? 0}`,
+                    };
+
+                    // Upsert into DB
+                    const { error } = await supabase
+                        .from('fixtures')
+                        .upsert(fixtureData, { onConflict: 'external_id' });
+
+                    if (!error) totalImported++;
+                }
             }
 
-            return { success: true, message: `Imported ${totalImported} LIVE matches.` };
+            return { success: true, message: `Imported ${totalImported} matches for today.` };
         } catch (error) {
             console.error('Bot Error:', error);
             return { success: false, message: error.message };
