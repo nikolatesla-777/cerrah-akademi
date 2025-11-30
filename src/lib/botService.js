@@ -20,7 +20,8 @@ const LEAGUES = [
 
 // Helper to upsert match into DB
 async function upsertMatch(match) {
-    const { fixture, teams, goals, league, status } = match;
+    const { fixture, teams, goals, league } = match;
+    const status = fixture.status;
 
     // Map Status
     let dbStatus = 'NOT_STARTED';

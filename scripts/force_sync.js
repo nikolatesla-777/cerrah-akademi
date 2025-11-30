@@ -19,7 +19,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 async function upsertMatch(match) {
-    const { fixture, teams, goals, league, status } = match;
+    const { fixture, teams, goals, league } = match;
+    const status = fixture.status;
     let dbStatus = 'NOT_STARTED';
     const shortStatus = status?.short;
 
@@ -44,7 +45,14 @@ async function upsertMatch(match) {
 
     const { error } = await supabase.from('fixtures').upsert(fixtureData, { onConflict: 'external_id' });
     if (error) console.error('Error upserting:', error.message);
-    else console.log(`Upserted: ${fixtureData.home_team} vs ${fixtureData.away_team} [${dbStatus}] ${fixtureData.score}`);
+    else {
+        if (dbStatus === 'FINISHED') {
+            console.log(`[UPDATED] ${fixtureData.home_team} ${fixtureData.score} ${fixtureData.away_team} (ID: ${fixtureData.external_id})`);
+        } else if (fixtureData.match_time.includes('2025-11-29')) {
+            // Debug: Log status for yesterday's matches that are NOT finished
+            console.log(`[DEBUG] ${fixtureData.home_team} vs ${fixtureData.away_team} Status: ${status?.short} (${status?.long})`);
+        }
+    }
 }
 
 async function sync() {
