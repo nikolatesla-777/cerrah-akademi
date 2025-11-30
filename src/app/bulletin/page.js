@@ -81,204 +81,203 @@ export default function BulletinPage() {
     const getSortedGroups = () => {
         const filtered = filterFixtures();
 
-        if ((activeTab === 'LIVE' || activeTab === 'ALL') && sortOption === 'TIME') {
-            if (sortOption === 'TIME') {
-                const favs = filtered.filter(f => favorites.includes(f.id));
-                const others = filtered.filter(f => !favorites.includes(f.id));
+        if (sortOption === 'TIME') {
+            const favs = filtered.filter(f => favorites.includes(f.id));
+            const others = filtered.filter(f => !favorites.includes(f.id));
 
-                const sortFn = (a, b) => {
-                    if (activeTab === 'LIVE') {
-                        // Sort by Minute Descending
-                        const minA = parseInt(a.minute) || 0;
-                        const minB = parseInt(b.minute) || 0;
-                        return minB - minA;
-                    } else {
-                        // Sort by Match Time Ascending
-                        return new Date(a.match_time) - new Date(b.match_time);
-                    }
-                };
-
-                favs.sort(sortFn);
-                others.sort(sortFn);
-
-                const sortedMatches = [...favs, ...others];
-
-                if (sortedMatches.length === 0) return [];
-
-                return [{
-                    id: 'sorted-by-time',
-                    country: activeTab === 'LIVE' ? 'Canlı' : 'Tümü',
-                    flag: null,
-                    league: 'Saate Göre Sıralı',
-                    logo: null,
-                    matches: sortedMatches
-                }];
-            }
-
-            // Default: Group by League
-            const grouped = filtered.reduce((acc, fixture) => {
-                // Group by Country + League to avoid ambiguity (e.g. 'Cup' in multiple countries)
-                const country = fixture.country || 'Dünya';
-                const league = fixture.league || 'Diğer';
-                const groupKey = `${country}-${league}`;
-
-                if (!acc[groupKey]) {
-                    acc[groupKey] = {
-                        id: groupKey,
-                        country: fixture.country,
-                        flag: fixture.country_flag,
-                        league: fixture.league,
-                        logo: fixture.league_logo,
-                        matches: []
-                    };
+            const sortFn = (a, b) => {
+                if (activeTab === 'LIVE') {
+                    // Sort by Minute Descending
+                    const minA = parseInt(a.minute) || 0;
+                    const minB = parseInt(b.minute) || 0;
+                    return minB - minA;
+                } else {
+                    // Sort by Match Time Ascending
+                    return new Date(a.match_time) - new Date(b.match_time);
                 }
-                acc[groupKey].matches.push(fixture);
-                return acc;
-            }, {});
+            };
 
-            // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
-            return Object.values(grouped).sort((a, b) => {
-                const aHasFav = a.matches.some(m => favorites.includes(m.id));
-                const bHasFav = b.matches.some(m => favorites.includes(m.id));
-                if (aHasFav && !bHasFav) return -1;
-                if (!aHasFav && bHasFav) return 1;
+            favs.sort(sortFn);
+            others.sort(sortFn);
 
-                // Secondary sort: Country Name
-                if (a.country < b.country) return -1;
-                if (a.country > b.country) return 1;
+            const sortedMatches = [...favs, ...others];
 
-                return 0;
-            });
-        };
+            if (sortedMatches.length === 0) return [];
 
-        const sortedGroups = getSortedGroups();
+            return [{
+                id: 'sorted-by-time',
+                country: activeTab === 'LIVE' ? 'Canlı' : 'Tümü',
+                flag: null,
+                league: 'Saate Göre Sıralı',
+                logo: null,
+                matches: sortedMatches
+            }];
+        }
 
-        const changeDate = (days) => {
-            const newDate = new Date(selectedDate);
-            newDate.setDate(newDate.getDate() + days);
-            setSelectedDate(newDate);
-            // fetchFixtures is triggered by useEffect dependency
-        };
+        // Default: Group by League
+        const grouped = filtered.reduce((acc, fixture) => {
+            // Group by Country + League to avoid ambiguity (e.g. 'Cup' in multiple countries)
+            const country = fixture.country || 'Dünya';
+            const league = fixture.league || 'Diğer';
+            const groupKey = `${country}-${league}`;
 
-        return (
-            <div className="bulletin-container">
-                {/* Header / Date Navigation */}
-                <div className="bulletin-header">
-                    <div className="header-top">
-                        <div className="date-nav">
-                            <button onClick={() => changeDate(-1)} className="nav-btn">◀</button>
-                            <div className="current-date">
-                                <span className="day">{selectedDate.toLocaleDateString('tr-TR', { weekday: 'long' })}</span>
-                                <span className="full-date">{selectedDate.toLocaleDateString('tr-TR')}</span>
-                            </div>
-                            <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
+            if (!acc[groupKey]) {
+                acc[groupKey] = {
+                    id: groupKey,
+                    country: fixture.country,
+                    flag: fixture.country_flag,
+                    league: fixture.league,
+                    logo: fixture.league_logo,
+                    matches: []
+                };
+            }
+            acc[groupKey].matches.push(fixture);
+            return acc;
+        }, {});
+
+        // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
+        return Object.values(grouped).sort((a, b) => {
+            const aHasFav = a.matches.some(m => favorites.includes(m.id));
+            const bHasFav = b.matches.some(m => favorites.includes(m.id));
+            if (aHasFav && !bHasFav) return -1;
+            if (!aHasFav && bHasFav) return 1;
+
+            // Secondary sort: Country Name
+            if (a.country < b.country) return -1;
+            if (a.country > b.country) return 1;
+
+            return 0;
+        });
+    };
+
+    const sortedGroups = getSortedGroups();
+
+    const changeDate = (days) => {
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() + days);
+        setSelectedDate(newDate);
+        // fetchFixtures is triggered by useEffect dependency
+    };
+
+    return (
+        <div className="bulletin-container">
+            {/* Header / Date Navigation */}
+            <div className="bulletin-header">
+                <div className="header-top">
+                    <div className="date-nav">
+                        <button onClick={() => changeDate(-1)} className="nav-btn">◀</button>
+                        <div className="current-date">
+                            <span className="day">{selectedDate.toLocaleDateString('tr-TR', { weekday: 'long' })}</span>
+                            <span className="full-date">{selectedDate.toLocaleDateString('tr-TR')}</span>
                         </div>
-
-                        {(activeTab === 'LIVE' || activeTab === 'ALL') && (
-                            <div className="sort-controls">
-                                <button
-                                    className={`sort-btn ${sortOption === 'LEAGUE' ? 'active' : ''}`}
-                                    onClick={() => setSortOption('LEAGUE')}
-                                >
-                                    Lige Göre
-                                </button>
-                                <button
-                                    className={`sort-btn ${sortOption === 'TIME' ? 'active' : ''}`}
-                                    onClick={() => setSortOption('TIME')}
-                                >
-                                    Saate Göre
-                                </button>
-                            </div>
-                        )}
+                        <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
                     </div>
 
-                    <div className="tabs">
-                        {['ALL', 'LIVE', 'FINISHED', 'FAVORITES'].map((tab) => (
+                    {(activeTab === 'LIVE' || activeTab === 'ALL') && (
+                        <div className="sort-controls">
                             <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                                className={`sort-btn ${sortOption === 'LEAGUE' ? 'active' : ''}`}
+                                onClick={() => setSortOption('LEAGUE')}
                             >
-                                {tab === 'ALL' && 'TÜMÜ'}
-                                {tab === 'LIVE' && 'CANLI'}
-                                {tab === 'FINISHED' && 'BİTENLER'}
-                                {tab === 'FAVORITES' && 'FAVORİLER'}
+                                Lige Göre
                             </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Match List */}
-                <div className="matches-list">
-                    {loading ? (
-                        <div className="loading">Yükleniyor...</div>
-                    ) : sortedGroups.length === 0 ? (
-                        <div className="empty-state">Maç bulunamadı.</div>
-                    ) : (
-                        sortedGroups.map((group) => (
-                            <div key={group.id} className="league-group">
-                                <div className="league-header">
-                                    <div className="league-info">
-                                        {group.flag && <img src={group.flag} alt={group.country} className="country-flag" />}
-                                        <span className="country-name">{group.country && group.country !== 'Dünya' ? group.country.toUpperCase() + ' - ' : ''}</span>
-                                        <span className="league-name">{group.league}</span>
-                                    </div>
-                                </div>
-                                {group.matches.map((match) => (
-                                    <div key={match.id} className={`match-row ${favorites.includes(match.id) ? 'favorite-row' : ''}`}>
-                                        <div className="match-status">
-                                            {match.status === 'LIVE' ? (
-                                                <span className="live-minute">{match.minute}'</span>
-                                            ) : match.status === 'FINISHED' ? (
-                                                <span className="finished">MS</span>
-                                            ) : (
-                                                <span className="time">
-                                                    {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="match-teams">
-                                            <div className="team home">
-                                                <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
-                                                    {match.home_team}
-                                                </span>
-                                                {match.home_team_logo && <img src={match.home_team_logo} alt="" className="team-logo" />}
-                                            </div>
-                                            <div className="match-score">
-                                                {match.status === 'NOT_STARTED' ? (
-                                                    <span className="vs">-</span>
-                                                ) : (
-                                                    <div className="score-box">
-                                                        <span className={`score-home ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[0]}</span>
-                                                        <span className="score-divider">-</span>
-                                                        <span className={`score-away ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[1]}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="team away">
-                                                {match.away_team_logo && <img src={match.away_team_logo} alt="" className="team-logo" />}
-                                                <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
-                                                    {match.away_team}
-                                                </span>
-                                            </div>
-                                            <div className="match-actions-col">
-                                                {/* Future: Add Odds Button Here */}
-                                            </div>
-                                        </div>
-                                        <button
-                                            className={`favorite-btn ${favorites.includes(match.id) ? 'active' : ''}`}
-                                            onClick={() => toggleFavorite(match.id)}
-                                        >
-                                            ★
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        ))
+                            <button
+                                className={`sort-btn ${sortOption === 'TIME' ? 'active' : ''}`}
+                                onClick={() => setSortOption('TIME')}
+                            >
+                                Saate Göre
+                            </button>
+                        </div>
                     )}
                 </div>
 
-                <style jsx>{`
+                <div className="tabs">
+                    {['ALL', 'LIVE', 'FINISHED', 'FAVORITES'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                        >
+                            {tab === 'ALL' && 'TÜMÜ'}
+                            {tab === 'LIVE' && 'CANLI'}
+                            {tab === 'FINISHED' && 'BİTENLER'}
+                            {tab === 'FAVORITES' && 'FAVORİLER'}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Match List */}
+            <div className="matches-list">
+                {loading ? (
+                    <div className="loading">Yükleniyor...</div>
+                ) : sortedGroups.length === 0 ? (
+                    <div className="empty-state">Maç bulunamadı.</div>
+                ) : (
+                    sortedGroups.map((group) => (
+                        <div key={group.id} className="league-group">
+                            <div className="league-header">
+                                <div className="league-info">
+                                    {group.flag && <img src={group.flag} alt={group.country} className="country-flag" />}
+                                    <span className="country-name">{group.country && group.country !== 'Dünya' ? group.country.toUpperCase() + ' - ' : ''}</span>
+                                    <span className="league-name">{group.league}</span>
+                                </div>
+                            </div>
+                            {group.matches.map((match) => (
+                                <div key={match.id} className={`match-row ${favorites.includes(match.id) ? 'favorite-row' : ''}`}>
+                                    <div className="match-status">
+                                        {match.status === 'LIVE' ? (
+                                            <span className="live-minute">{match.minute}'</span>
+                                        ) : match.status === 'FINISHED' ? (
+                                            <span className="finished">MS</span>
+                                        ) : (
+                                            <span className="time">
+                                                {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="match-teams">
+                                        <div className="team home">
+                                            <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
+                                                {match.home_team}
+                                            </span>
+                                            {match.home_team_logo && <img src={match.home_team_logo} alt="" className="team-logo" />}
+                                        </div>
+                                        <div className="match-score">
+                                            {match.status === 'NOT_STARTED' ? (
+                                                <span className="vs">-</span>
+                                            ) : (
+                                                <div className="score-box">
+                                                    <span className={`score-home ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[0]}</span>
+                                                    <span className="score-divider">-</span>
+                                                    <span className={`score-away ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[1]}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="team away">
+                                            {match.away_team_logo && <img src={match.away_team_logo} alt="" className="team-logo" />}
+                                            <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
+                                                {match.away_team}
+                                            </span>
+                                        </div>
+                                        <div className="match-actions-col">
+                                            {/* Future: Add Odds Button Here */}
+                                        </div>
+                                    </div>
+                                    <button
+                                        className={`favorite-btn ${favorites.includes(match.id) ? 'active' : ''}`}
+                                        onClick={() => toggleFavorite(match.id)}
+                                    >
+                                        ★
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ))
+                )}
+            </div>
+
+            <style jsx>{`
                 .bulletin-container {
                     background-color: #0f172a;
                     min-height: 100vh;
@@ -577,6 +576,6 @@ export default function BulletinPage() {
                     color: #94a3b8;
                 }
             `}</style>
-            </div>
-        );
-    }
+        </div>
+    );
+}
