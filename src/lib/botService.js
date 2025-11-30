@@ -255,5 +255,80 @@ export const BotService = {
             console.error('Check Results Error:', error);
             return { success: false, message: error.message };
         }
+    },
+
+    // 4. Fetch Full Match Details (On Demand)
+    fetchMatchDetails: async (fixtureId) => {
+        const API_KEY = process.env.NEXT_PUBLIC_API_FOOTBALL_KEY;
+        if (!API_KEY) return { success: false, message: 'API Key missing' };
+
+        try {
+            // 1. Get basic info from DB to know teams and league
+            const { data: fixture } = await supabase
+                .from('fixtures')
+                .select('*')
+                .eq('external_id', fixtureId)
+                .single();
+
+            if (!fixture) return { success: false, message: 'Fixture not found in DB' };
+
+            // We need to make parallel requests for efficiency
+            const headers = { 'x-apisports-key': API_KEY };
+
+            // Prepare promises
+            const pStats = fetch(`${BASE_URL}/fixtures/statistics?fixture=${fixtureId}`, { headers }).then(r => r.json());
+            const pLineups = fetch(`${BASE_URL}/fixtures/lineups?fixture=${fixtureId}`, { headers }).then(r => r.json());
+            const pPredictions = fetch(`${BASE_URL}/predictions?fixture=${fixtureId}`, { headers }).then(r => r.json());
+
+            // H2H needs team IDs. We don't store team IDs in our simplified schema, only names.
+            // BUT, the `fixture` object from API has team IDs. 
+            // We might need to fetch the fixture from API again if we don't have IDs.
+            // Actually, let's fetch the fixture details from API first if we need IDs, 
+            // OR we can rely on the fact that we might have stored them? 
+            // Wait, our schema doesn't have team_id columns. 
+            // We can get team IDs from the `lineups` or `statistics` response usually, or just fetch the fixture again.
+            // Let's fetch the fixture from API to be safe and get IDs.
+            const pFixture = fetch(`${BASE_URL}/fixtures?id=${fixtureId}`, { headers }).then(r => r.json());
+
+            const [statsRes, lineupsRes, predictionsRes, fixtureRes] = await Promise.all([pStats, pLineups, pPredictions, pFixture]);
+
+            let updates = {};
+
+            if (statsRes.response) updates.statistics = statsRes.response;
+            if (lineupsRes.response) updates.lineups = lineupsRes.response;
+            if (predictionsRes.response) updates.predictions = predictionsRes.response;
+
+            // Now we have team IDs from fixtureRes to fetch H2H and Standings
+            if (fixtureRes.response && fixtureRes.response.length > 0) {
+                const f = fixtureRes.response[0];
+                const homeId = f.teams.home.id;
+                const awayId = f.teams.away.id;
+                const leagueId = f.league.id;
+                const season = f.league.season;
+
+                // Fetch H2H and Standings
+                const pH2H = fetch(`${BASE_URL}/fixtures/headtohead?h2h=${homeId}-${awayId}`, { headers }).then(r => r.json());
+                const pStandings = fetch(`${BASE_URL}/standings?league=${leagueId}&season=${season}`, { headers }).then(r => r.json());
+
+                const [h2hRes, standingsRes] = await Promise.all([pH2H, pStandings]);
+
+                if (h2hRes.response) updates.h2h = h2hRes.response;
+                if (standingsRes.response) updates.standings = standingsRes.response;
+            }
+
+            // Update DB
+            const { error } = await supabase
+                .from('fixtures')
+                .update(updates)
+                .eq('external_id', fixtureId);
+
+            if (error) throw error;
+
+            return { success: true, message: 'Match details updated' };
+
+        } catch (error) {
+            console.error('Fetch Details Error:', error);
+            return { success: false, message: error.message };
+        }
     }
 };
