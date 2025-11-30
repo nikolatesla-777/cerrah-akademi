@@ -81,21 +81,32 @@ export default function BulletinPage() {
     const getSortedGroups = () => {
         const filtered = filterFixtures();
 
-        if (activeTab === 'LIVE' && sortOption === 'TIME') {
-            // Sort by Minute Descending
+        if ((activeTab === 'LIVE' || activeTab === 'ALL') && sortOption === 'TIME') {
+            // Sort by Minute Descending (Live) or Time Ascending (All)
             const sortedMatches = [...filtered].sort((a, b) => {
-                const minA = parseInt(a.minute) || 0;
-                const minB = parseInt(b.minute) || 0;
-                return minB - minA;
+                // 1. Favorites First
+                const aFav = favorites.includes(a.id);
+                const bFav = favorites.includes(b.id);
+                if (aFav && !bFav) return -1;
+                if (!aFav && bFav) return 1;
+
+                // 2. Time Sort
+                if (activeTab === 'LIVE') {
+                    const minA = parseInt(a.minute) || 0;
+                    const minB = parseInt(b.minute) || 0;
+                    return minB - minA;
+                } else {
+                    return new Date(a.match_time) - new Date(b.match_time);
+                }
             });
 
             if (sortedMatches.length === 0) return [];
 
             return [{
-                id: 'live-sorted',
-                country: 'Canlı',
+                id: 'sorted-list',
+                country: activeTab === 'LIVE' ? 'Canlı' : 'Tümü',
                 flag: null,
-                league: 'Dakikaya Göre Sıralı',
+                league: activeTab === 'LIVE' ? 'Dakikaya Göre Sıralı' : 'Saate Göre Sıralı',
                 logo: null,
                 matches: sortedMatches
             }];
@@ -123,7 +134,17 @@ export default function BulletinPage() {
         }, {});
 
         // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
-        return Object.values(grouped).sort((a, b) => {
+        return Object.values(grouped).map(group => {
+            // Sort matches within group: Favorites first, then Time
+            group.matches.sort((a, b) => {
+                const aFav = favorites.includes(a.id);
+                const bFav = favorites.includes(b.id);
+                if (aFav && !bFav) return -1;
+                if (!aFav && bFav) return 1;
+                return new Date(a.match_time) - new Date(b.match_time);
+            });
+            return group;
+        }).sort((a, b) => {
             const aHasFav = a.matches.some(m => favorites.includes(m.id));
             const bHasFav = b.matches.some(m => favorites.includes(m.id));
             if (aHasFav && !bHasFav) return -1;
@@ -160,7 +181,7 @@ export default function BulletinPage() {
                         <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
                     </div>
 
-                    {activeTab === 'LIVE' && (
+                    {(activeTab === 'LIVE' || activeTab === 'ALL') && (
                         <div className="sort-controls">
                             <button
                                 className={`sort-btn ${sortOption === 'LEAGUE' ? 'active' : ''}`}
