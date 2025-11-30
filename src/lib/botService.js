@@ -41,6 +41,8 @@ async function upsertMatch(match) {
         away_team_logo: teams.away.logo,
         league: league.name,
         league_logo: league.logo,
+        country: league.country,
+        country_flag: league.flag,
         match_time: fixture.date,
         status: dbStatus,
         minute: fixture.status.elapsed, // Live minute

@@ -1,0 +1,4 @@
+
+ALTER TABLE fixtures 
+ADD COLUMN IF NOT EXISTS country TEXT,
+ADD COLUMN IF NOT EXISTS country_flag TEXT;
