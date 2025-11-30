@@ -55,9 +55,7 @@ async function upsertMatch(match) {
     if (error) {
         console.error('Supabase Upsert Error:', error.message, fixtureData);
     } else {
-        if (dbStatus === 'FINISHED') {
-            console.log(`[UPDATED] ${fixtureData.home_team} ${fixtureData.score} ${fixtureData.away_team} (ID: ${fixtureData.external_id})`);
-        }
+        // console.log('Imported:', fixtureData.home_team, '-', fixtureData.away_team);
     }
 }
 
