@@ -52,6 +52,17 @@ async function bulkUpsertMatches(matches) {
 
     if (error) {
         console.error('Supabase Bulk Upsert Error:', error.message);
+    } else {
+        // DEBUG LOGGING
+        const finished = fixtureDataArray.filter(f => f.status === 'FINISHED');
+        if (finished.length > 0) {
+            console.log(`[BulkUpsert] Finalized ${finished.length} matches:`, finished.map(f => `${f.home_team}-${f.away_team} (${f.status})`));
+        }
+        const live = fixtureDataArray.filter(f => f.status === 'LIVE');
+        if (live.length > 0) {
+            // Log only first 3 to avoid spam
+            console.log(`[BulkUpsert] Updated ${live.length} live matches. Sample: ${live[0].home_team} ${live[0].minute}'`);
+        }
     }
 }
 
@@ -215,12 +226,15 @@ export const BotService = {
                 headers: { 'x-apisports-key': API_KEY }
             });
             const liveJson = await liveResponse.json();
+
             const globalLive = liveJson.response || [];
 
             globalLive.forEach(m => idsToUpdate.add(m.fixture.id));
 
             // If we have nothing to update, return
-            if (idsToUpdate.size === 0) return { success: true, message: 'No live matches to sync.' };
+            if (idsToUpdate.size === 0) {
+                return { success: true, message: 'No live matches to sync.' };
+            }
 
             const liveMap = new Map(globalLive.map(m => [m.fixture.id, m]));
             const missingIds = [...idsToUpdate].filter(id => !liveMap.has(id));
@@ -235,6 +249,7 @@ export const BotService = {
 
             // Fetch & Update "Missing" matches (Those that were LIVE but now Finished)
             if (missingIds.length > 0) {
+                console.log(`[CheckResults] Found ${missingIds.length} potentially finished matches:`, missingIds);
                 // Fetch in batches of 10
                 for (let i = 0; i < missingIds.length; i += 10) {
                     const batch = missingIds.slice(i, i + 10).join('-');
@@ -243,8 +258,11 @@ export const BotService = {
                     const json = await res.json();
 
                     if (json.response && json.response.length > 0) {
+                        console.log(`[CheckResults] Fetched details for missing matches. Updating...`);
                         await bulkUpsertMatches(json.response);
                         updatedCount += json.response.length;
+                    } else {
+                        console.warn(`[CheckResults] Failed to fetch details for missing batch: ${batch}`, json);
                     }
                 }
             }
@@ -252,7 +270,7 @@ export const BotService = {
             return { success: true, message: `Synced ${updatedCount} matches (Live & Recently Finished).` };
 
         } catch (error) {
-            console.error('Check Results Error:', error);
+            console.error('CheckResults Error:', error);
             return { success: false, message: error.message };
         }
     },

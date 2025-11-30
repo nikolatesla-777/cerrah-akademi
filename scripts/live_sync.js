@@ -55,6 +55,10 @@ async function bulkUpsertMatches(matches) {
         console.error('Supabase Bulk Upsert Error:', error.message);
     } else {
         console.log(`[${new Date().toLocaleTimeString()}] Upserted ${matches.length} matches.`);
+        // Add console log to print match status updates.
+        // fixtureDataArray.forEach(match => {
+        //     console.log(`[${new Date().toLocaleTimeString()}] Match ${match.home_team} vs ${match.away_team} (ID: ${match.external_id}) status: ${match.status} (${match.minute}')`);
+        // });
     }
 }
 
