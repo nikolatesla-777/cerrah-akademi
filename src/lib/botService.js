@@ -74,31 +74,24 @@ export const BotService = {
 
         try {
             // STRATEGY 1: Fetch ALL currently live matches (Global)
-            // This ensures we catch everything playing right now, regardless of league filters
             const liveUrl = `${BASE_URL}/fixtures?live=all`;
             const liveResponse = await fetch(liveUrl, { headers: { 'x-apisports-key': API_KEY } });
             const liveJson = await liveResponse.json();
 
             if (liveJson.response) {
-                for (const match of liveJson.response) {
-                    // Import EVERYTHING. No filtering.
-                    await upsertMatch(match);
-                    totalImported++;
-                }
+                // Parallel Upsert for Live Matches
+                await Promise.all(liveJson.response.map(match => upsertMatch(match)));
+                totalImported += liveJson.response.length;
             }
 
             // STRATEGY 2: Fetch Global Schedule for Yesterday, Today & Tomorrow
-            // We fetch ALL matches for the given dates. No league filtering.
-            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
-            const datesToFetch = [yesterday, today, tomorrow];
+            // Limit to Today only for now to prevent timeout on Vercel Free Tier
+            // const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+            const datesToFetch = [today]; // Removed yesterday/tomorrow for performance
 
             for (const date of datesToFetch) {
-                // Fetch all fixtures for this date (Global)
                 const url = `${BASE_URL}/fixtures?date=${date}`;
-                const response = await fetch(url, {
-                    headers: { 'x-apisports-key': API_KEY }
-                });
-
+                const response = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
                 const json = await response.json();
 
                 if (json.errors && Object.keys(json.errors).length > 0) {
@@ -108,10 +101,14 @@ export const BotService = {
 
                 const matches = json.response || [];
 
-                for (const match of matches) {
-                    await upsertMatch(match);
-                    totalImported++;
+                // Parallel Upsert (Batch of 50 to avoid DB connection limit)
+                const batchSize = 50;
+                for (let i = 0; i < matches.length; i += batchSize) {
+                    const batch = matches.slice(i, i + batchSize);
+                    await Promise.all(batch.map(m => upsertMatch(m)));
                 }
+
+                totalImported += matches.length;
             }
 
             return { success: true, message: `Imported ${totalImported} matches (Global).` };
