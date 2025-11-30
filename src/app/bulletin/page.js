@@ -10,6 +10,8 @@ export default function BulletinPage() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [favorites, setFavorites] = useState([]);
 
+    const [sortOption, setSortOption] = useState('LEAGUE'); // 'LEAGUE' or 'TIME'
+
     useEffect(() => {
         fetchFixtures(selectedDate);
 
@@ -73,59 +75,69 @@ export default function BulletinPage() {
             filtered = filtered.filter(f => favorites.includes(f.id));
         }
 
-        // 2. Date Filter
-        // For FAVORITES, we might want to show favorites from ALL dates or just selected date?
-        // Usually favorites are relevant regardless of date, or at least for the selected day.
-        // Let's keep date filter for Favorites too for now to avoid clutter, 
-        // OR disable date filter for Favorites if user wants to see all their tracked games.
-        // User said "Favoriler kısmı...". Let's assume they want to see favorites for the selected date first.
-        // But often favorites are "My Games" across all time. 
-        // Let's stick to selected date for consistency with the UI date picker, 
-        // unless activeTab is LIVE (which shows all live).
-
-        // The `fixtures` state already contains data for the `selectedDate` due to `fetchFixtures`.
-        // So, for 'ALL', 'FINISHED', 'FAVORITES', the date filter is implicitly applied by `fetchFixtures`.
-        // For 'LIVE', we might want to show ALL live matches regardless of date?
-        // Usually live matches are "Today", but late night ones might be "Yesterday".
-        // For now, let's stick to the selected date's view for LIVE as well, as `fetchFixtures` limits it.
-        // If a global 'LIVE' view is needed, `fetchFixtures` would need to be modified or a separate fetch.
-
         return filtered;
     };
 
-    const groupedFixtures = filterFixtures().reduce((acc, fixture) => {
-        // Group by Country + League to avoid ambiguity (e.g. 'Cup' in multiple countries)
-        const country = fixture.country || 'Dünya';
-        const league = fixture.league || 'Diğer';
-        const groupKey = `${country}-${league}`;
+    const getSortedGroups = () => {
+        const filtered = filterFixtures();
 
-        if (!acc[groupKey]) {
-            acc[groupKey] = {
-                id: groupKey,
-                country: fixture.country,
-                flag: fixture.country_flag,
-                league: fixture.league,
-                logo: fixture.league_logo,
-                matches: []
-            };
+        if (activeTab === 'LIVE' && sortOption === 'TIME') {
+            // Sort by Minute Descending
+            const sortedMatches = [...filtered].sort((a, b) => {
+                const minA = parseInt(a.minute) || 0;
+                const minB = parseInt(b.minute) || 0;
+                return minB - minA;
+            });
+
+            if (sortedMatches.length === 0) return [];
+
+            return [{
+                id: 'live-sorted',
+                country: 'Canlı',
+                flag: null,
+                league: 'Dakikaya Göre Sıralı',
+                logo: null,
+                matches: sortedMatches
+            }];
         }
-        acc[groupKey].matches.push(fixture);
-        return acc;
-    }, {});
 
-    // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
-    const sortedGroups = Object.values(groupedFixtures).sort((a, b) => {
-        const aHasFav = a.matches.some(m => favorites.includes(m.id));
-        const bHasFav = b.matches.some(m => favorites.includes(m.id));
-        if (aHasFav && !bHasFav) return -1;
-        if (!aHasFav && bHasFav) return 1;
+        // Default: Group by League
+        const grouped = filtered.reduce((acc, fixture) => {
+            // Group by Country + League to avoid ambiguity (e.g. 'Cup' in multiple countries)
+            const country = fixture.country || 'Dünya';
+            const league = fixture.league || 'Diğer';
+            const groupKey = `${country}-${league}`;
 
-        // Secondary sort: Country Name
-        if (a.country < b.country) return -1;
-        if (a.country > b.country) return 1;
+            if (!acc[groupKey]) {
+                acc[groupKey] = {
+                    id: groupKey,
+                    country: fixture.country,
+                    flag: fixture.country_flag,
+                    league: fixture.league,
+                    logo: fixture.league_logo,
+                    matches: []
+                };
+            }
+            acc[groupKey].matches.push(fixture);
+            return acc;
+        }, {});
 
-        return 0;
-    });
+        // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
+        return Object.values(grouped).sort((a, b) => {
+            const aHasFav = a.matches.some(m => favorites.includes(m.id));
+            const bHasFav = b.matches.some(m => favorites.includes(m.id));
+            if (aHasFav && !bHasFav) return -1;
+            if (!aHasFav && bHasFav) return 1;
+
+            // Secondary sort: Country Name
+            if (a.country < b.country) return -1;
+            if (a.country > b.country) return 1;
+
+            return 0;
+        });
+    };
+
+    const sortedGroups = getSortedGroups();
 
     const changeDate = (days) => {
         const newDate = new Date(selectedDate);
@@ -138,13 +150,32 @@ export default function BulletinPage() {
         <div className="bulletin-container">
             {/* Header / Date Navigation */}
             <div className="bulletin-header">
-                <div className="date-nav">
-                    <button onClick={() => changeDate(-1)} className="nav-btn">◀</button>
-                    <div className="current-date">
-                        <span className="day">{selectedDate.toLocaleDateString('tr-TR', { weekday: 'long' })}</span>
-                        <span className="full-date">{selectedDate.toLocaleDateString('tr-TR')}</span>
+                <div className="header-top">
+                    <div className="date-nav">
+                        <button onClick={() => changeDate(-1)} className="nav-btn">◀</button>
+                        <div className="current-date">
+                            <span className="day">{selectedDate.toLocaleDateString('tr-TR', { weekday: 'long' })}</span>
+                            <span className="full-date">{selectedDate.toLocaleDateString('tr-TR')}</span>
+                        </div>
+                        <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
                     </div>
-                    <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
+
+                    {activeTab === 'LIVE' && (
+                        <div className="sort-controls">
+                            <button
+                                className={`sort-btn ${sortOption === 'LEAGUE' ? 'active' : ''}`}
+                                onClick={() => setSortOption('LEAGUE')}
+                            >
+                                Lige Göre
+                            </button>
+                            <button
+                                className={`sort-btn ${sortOption === 'TIME' ? 'active' : ''}`}
+                                onClick={() => setSortOption('TIME')}
+                            >
+                                Saate Göre
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="tabs">
@@ -250,12 +281,57 @@ export default function BulletinPage() {
                     border-bottom: 1px solid #334155;
                 }
 
+                .bulletin-header {
+                    background-color: #1e293b;
+                    padding: 1rem;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                    border-bottom: 1px solid #334155;
+                }
+
+                .header-top {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                    position: relative;
+                }
+
                 .date-nav {
                     display: flex;
                     justify-content: center;
                     align-items: center;
                     gap: 1rem;
-                    margin-bottom: 1rem;
+                    flex: 1;
+                }
+
+                .sort-controls {
+                    position: absolute;
+                    right: 0;
+                    display: flex;
+                    gap: 0.5rem;
+                }
+
+                .sort-btn {
+                    background: #334155;
+                    border: none;
+                    color: #94a3b8;
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 4px;
+                    font-size: 0.8rem;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .sort-btn:hover {
+                    background: #475569;
+                    color: #fff;
+                }
+
+                .sort-btn.active {
+                    background: #22c55e;
+                    color: #fff;
                 }
 
                 .nav-btn {
