@@ -69,14 +69,26 @@ export default function BulletinPage() {
             filtered = filtered.filter(f => f.status === 'LIVE');
         } else if (activeTab === 'FINISHED') {
             filtered = filtered.filter(f => f.status === 'FINISHED');
-        } else if (activeTab === 'SCHEDULED') {
-            filtered = filtered.filter(f => f.status === 'NOT_STARTED');
+        } else if (activeTab === 'FAVORITES') {
+            filtered = filtered.filter(f => favorites.includes(f.id));
         }
 
-        // Date filter is now handled server-side for 'ALL'/'SCHEDULED'/'FINISHED'
-        // But for 'LIVE', we might want to show ALL live matches regardless of date?
+        // 2. Date Filter
+        // For FAVORITES, we might want to show favorites from ALL dates or just selected date?
+        // Usually favorites are relevant regardless of date, or at least for the selected day.
+        // Let's keep date filter for Favorites too for now to avoid clutter, 
+        // OR disable date filter for Favorites if user wants to see all their tracked games.
+        // User said "Favoriler kısmı...". Let's assume they want to see favorites for the selected date first.
+        // But often favorites are "My Games" across all time. 
+        // Let's stick to selected date for consistency with the UI date picker, 
+        // unless activeTab is LIVE (which shows all live).
+
+        // The `fixtures` state already contains data for the `selectedDate` due to `fetchFixtures`.
+        // So, for 'ALL', 'FINISHED', 'FAVORITES', the date filter is implicitly applied by `fetchFixtures`.
+        // For 'LIVE', we might want to show ALL live matches regardless of date?
         // Usually live matches are "Today", but late night ones might be "Yesterday".
-        // For now, let's stick to the selected date's view.
+        // For now, let's stick to the selected date's view for LIVE as well, as `fetchFixtures` limits it.
+        // If a global 'LIVE' view is needed, `fetchFixtures` would need to be modified or a separate fetch.
 
         return filtered;
     };
@@ -118,7 +130,7 @@ export default function BulletinPage() {
                 </div>
 
                 <div className="tabs">
-                    {['ALL', 'LIVE', 'FINISHED', 'SCHEDULED'].map((tab) => (
+                    {['ALL', 'LIVE', 'FINISHED', 'FAVORITES'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -126,8 +138,8 @@ export default function BulletinPage() {
                         >
                             {tab === 'ALL' && 'TÜMÜ'}
                             {tab === 'LIVE' && 'CANLI'}
-                            {tab === 'FINISHED' && 'BİTMİŞ'}
-                            {tab === 'SCHEDULED' && 'PROGRAM'}
+                            {tab === 'FINISHED' && 'BİTENLER'}
+                            {tab === 'FAVORITES' && 'FAVORİLER'}
                         </button>
                     ))}
                 </div>

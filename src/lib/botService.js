@@ -85,11 +85,15 @@ export const BotService = {
                 totalImported += liveJson.response.length;
             }
 
-            // STRATEGY 2: Fetch Global Schedule for Yesterday, Today & Tomorrow
+            // STRATEGY 2: Fetch Global Schedule for Yesterday, Today & Next 3 Days
             // We fetch ALL matches for the given dates. No league filtering.
             const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
             const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
-            const datesToFetch = [yesterday, today, tomorrow]; // Fetch all 3 days as requested
+            const dayAfterTomorrow = new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().split('T')[0];
+            const threeDaysLater = new Date(new Date().setDate(new Date().getDate() + 3)).toISOString().split('T')[0];
+
+            const datesToFetch = [yesterday, today, tomorrow, dayAfterTomorrow, threeDaysLater]; // Fetch wider range
 
             for (const date of datesToFetch) {
                 const url = `${BASE_URL}/fixtures?date=${date}`;
