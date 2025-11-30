@@ -94,18 +94,36 @@ export default function BulletinPage() {
     };
 
     const groupedFixtures = filterFixtures().reduce((acc, fixture) => {
+        // Group by Country + League to avoid ambiguity (e.g. 'Cup' in multiple countries)
+        const country = fixture.country || 'Dünya';
         const league = fixture.league || 'Diğer';
-        if (!acc[league]) acc[league] = [];
-        acc[league].push(fixture);
+        const groupKey = `${country}-${league}`;
+
+        if (!acc[groupKey]) {
+            acc[groupKey] = {
+                id: groupKey,
+                country: fixture.country,
+                flag: fixture.country_flag,
+                league: fixture.league,
+                logo: fixture.league_logo,
+                matches: []
+            };
+        }
+        acc[groupKey].matches.push(fixture);
         return acc;
     }, {});
 
-    // Sort leagues: Favorites first
-    const sortedLeagues = Object.entries(groupedFixtures).sort(([leagueA, matchesA], [leagueB, matchesB]) => {
-        const aHasFav = matchesA.some(m => favorites.includes(m.id));
-        const bHasFav = matchesB.some(m => favorites.includes(m.id));
+    // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
+    const sortedGroups = Object.values(groupedFixtures).sort((a, b) => {
+        const aHasFav = a.matches.some(m => favorites.includes(m.id));
+        const bHasFav = b.matches.some(m => favorites.includes(m.id));
         if (aHasFav && !bHasFav) return -1;
         if (!aHasFav && bHasFav) return 1;
+
+        // Secondary sort: Country Name
+        if (a.country < b.country) return -1;
+        if (a.country > b.country) return 1;
+
         return 0;
     });
 
@@ -145,54 +163,43 @@ export default function BulletinPage() {
                 </div>
             </div>
 
-            {/* Matches List */}
+            {/* Match List */}
             <div className="matches-list">
                 {loading ? (
                     <div className="loading">Yükleniyor...</div>
-                ) : filterFixtures().length === 0 ? (
+                ) : sortedGroups.length === 0 ? (
                     <div className="empty-state">Maç bulunamadı.</div>
                 ) : (
-                    sortedLeagues.map(([leagueName, matches]) => (
-                        <div key={leagueName} className="league-group">
+                    sortedGroups.map((group) => (
+                        <div key={group.id} className="league-group">
                             <div className="league-header">
-                                <span className="star-icon">☆</span>
-                                <span className="league-name">{leagueName}</span>
-                                <img src={matches[0].league_logo} alt="" className="league-logo" onError={(e) => e.target.style.display = 'none'} />
+                                <div className="league-info">
+                                    {group.flag && <img src={group.flag} alt={group.country} className="country-flag" />}
+                                    <span className="country-name">{group.country && group.country !== 'Dünya' ? group.country.toUpperCase() + ' - ' : ''}</span>
+                                    <span className="league-name">{group.league}</span>
+                                </div>
                             </div>
-                            {matches.map((match) => {
-                                const isFav = favorites.includes(match.id);
-                                return (
-                                    <div key={match.id} className={`match-row ${isFav ? 'favorite-row' : ''}`}>
-                                        <div className="match-status-col">
-                                            <span
-                                                className={`star-icon-row ${isFav ? 'active' : ''}`}
-                                                onClick={() => toggleFavorite(match.id)}
-                                            >
-                                                {isFav ? '★' : '☆'}
+                            {group.matches.map((match) => (
+                                <div key={match.id} className={`match-row ${favorites.includes(match.id) ? 'favorite-row' : ''}`}>
+                                    <div className="match-status">
+                                        {match.status === 'LIVE' ? (
+                                            <span className="live-minute">{match.minute}'</span>
+                                        ) : match.status === 'FINISHED' ? (
+                                            <span className="finished">MS</span>
+                                        ) : (
+                                            <span className="time">
+                                                {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-                                            {match.status === 'LIVE' ? (
-                                                <span className="live-minute">{match.minute}'</span>
-                                            ) : match.status === 'FINISHED' ? (
-                                                <span className="status-finished">MS</span>
-                                            ) : (
-                                                <span className="match-time">
-                                                    {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            )}
+                                        )}
+                                    </div>
+                                    <div className="match-teams">
+                                        <div className="team home">
+                                            <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
+                                                {match.home_team}
+                                            </span>
+                                            {match.home_team_logo && <img src={match.home_team_logo} alt="" className="team-logo" />}
                                         </div>
-
-                                        <div className="match-teams-col">
-                                            <div className={`team home ${match.score && match.score !== '-' && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
-                                                {match.home_team_logo && <img src={match.home_team_logo} alt="" className="team-logo" />}
-                                                <span className="team-name">{match.home_team}</span>
-                                            </div>
-                                            <div className={`team away ${match.score && match.score !== '-' && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
-                                                {match.away_team_logo && <img src={match.away_team_logo} alt="" className="team-logo" />}
-                                                <span className="team-name">{match.away_team}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="match-score-col">
+                                        <div className="match-score">
                                             {match.status === 'NOT_STARTED' ? (
                                                 <span className="vs">-</span>
                                             ) : (
@@ -439,5 +446,5 @@ export default function BulletinPage() {
                 }
             `}</style>
         </div>
-    );
+            );
 }
