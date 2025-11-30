@@ -34,6 +34,7 @@ export default function BulletinPage() {
         const { data, error } = await supabase
             .from('fixtures')
             .select('*')
+            .range(0, 4999) // Bypass default 1000 row limit
             .order('match_time', { ascending: true });
 
         if (error) console.error('Error fetching fixtures:', error);
