@@ -11,13 +11,13 @@ export default function BulletinPage() {
     const [favorites, setFavorites] = useState([]);
 
     useEffect(() => {
-        fetchFixtures();
+        fetchFixtures(selectedDate);
 
         // Realtime Subscription
         const channel = supabase
             .channel('public:fixtures')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, (payload) => {
-                fetchFixtures();
+                fetchFixtures(selectedDate);
             })
             .subscribe();
 
@@ -28,12 +28,23 @@ export default function BulletinPage() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [selectedDate]); // Re-fetch when date changes
 
-    const fetchFixtures = async () => {
+    const fetchFixtures = async (date) => {
+        setLoading(true);
+
+        // Calculate Local Start/End of Day in UTC
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
         const { data, error } = await supabase
             .from('fixtures')
             .select('*')
+            .gte('match_time', startOfDay.toISOString())
+            .lte('match_time', endOfDay.toISOString())
             .range(0, 4999) // Bypass default 1000 row limit
             .order('match_time', { ascending: true });
 
@@ -62,18 +73,10 @@ export default function BulletinPage() {
             filtered = filtered.filter(f => f.status === 'NOT_STARTED');
         }
 
-        // 2. Date Filter
-        if (activeTab !== 'LIVE') { // Don't filter by date if looking at LIVE tab
-            // Fix: Use local date string comparison to avoid UTC mismatch
-            const selDateStr = selectedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
-
-            filtered = filtered.filter(f => {
-                if (!f.match_time) return false;
-                const matchDate = new Date(f.match_time);
-                const matchDateStr = matchDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
-                return matchDateStr === selDateStr;
-            });
-        }
+        // Date filter is now handled server-side for 'ALL'/'SCHEDULED'/'FINISHED'
+        // But for 'LIVE', we might want to show ALL live matches regardless of date?
+        // Usually live matches are "Today", but late night ones might be "Yesterday".
+        // For now, let's stick to the selected date's view.
 
         return filtered;
     };
@@ -98,6 +101,7 @@ export default function BulletinPage() {
         const newDate = new Date(selectedDate);
         newDate.setDate(newDate.getDate() + days);
         setSelectedDate(newDate);
+        // fetchFixtures is triggered by useEffect dependency
     };
 
     return (
