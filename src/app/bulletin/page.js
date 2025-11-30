@@ -135,15 +135,6 @@ export default function BulletinPage() {
 
             {/* Matches List */}
             <div className="matches-list">
-                {/* DEBUG INFO */}
-                <div style={{ padding: '1rem', background: '#334155', marginBottom: '1rem', fontSize: '0.8rem', color: '#cbd5e1' }}>
-                    <p>Total Fixtures: {fixtures.length}</p>
-                    <p>Selected Date: {selectedDate.toLocaleDateString('en-CA')}</p>
-                    <p>Active Tab: {activeTab}</p>
-                    <p>Sample Match Time (Raw): {fixtures[0]?.match_time}</p>
-                    <p>Sample Match Date (Local): {fixtures[0] ? new Date(fixtures[0].match_time).toLocaleDateString('en-CA') : 'N/A'}</p>
-                </div>
-
                 {loading ? (
                     <div className="loading">Yükleniyor...</div>
                 ) : filterFixtures().length === 0 ? (
