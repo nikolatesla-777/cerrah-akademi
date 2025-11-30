@@ -85,9 +85,10 @@ export const BotService = {
             }
 
             // STRATEGY 2: Fetch Global Schedule for Yesterday, Today & Tomorrow
-            // Limit to Today only for now to prevent timeout on Vercel Free Tier
-            // const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
-            const datesToFetch = [today]; // Removed yesterday/tomorrow for performance
+            // We fetch ALL matches for the given dates. No league filtering.
+            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+            const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
+            const datesToFetch = [yesterday, today, tomorrow]; // Fetch all 3 days as requested
 
             for (const date of datesToFetch) {
                 const url = `${BASE_URL}/fixtures?date=${date}`;
