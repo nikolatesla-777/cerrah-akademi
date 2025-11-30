@@ -345,7 +345,6 @@ export default function BulletinPage() {
                     height: 15px;
                     object-fit: cover;
                     border-radius: 2px;
-                    background-color: #334155; /* Placeholder color */
                     margin-right: 0.5rem;
                 }
 
