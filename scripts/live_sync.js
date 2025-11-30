@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseServiceKey || !API_KEY) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const BASE_URL = 'https://v3.football.api-sports.io';
 
-async function upsertMatch(match) {
+function prepareMatchData(match) {
     const { fixture, teams, goals, league } = match;
     const status = fixture.status;
     let dbStatus = 'NOT_STARTED';
@@ -24,7 +24,7 @@ async function upsertMatch(match) {
     else if (['FT', 'AET', 'PEN'].includes(shortStatus)) dbStatus = 'FINISHED';
     else if (['PST', 'CANC', 'ABD'].includes(shortStatus)) dbStatus = 'CANCELLED';
 
-    const fixtureData = {
+    return {
         id: String(fixture.id),
         external_id: fixture.id,
         home_team: teams.home.name,
@@ -40,12 +40,21 @@ async function upsertMatch(match) {
         minute: fixture.status.elapsed,
         score: dbStatus === 'NOT_STARTED' ? '-' : `${goals.home ?? 0}-${goals.away ?? 0}`,
     };
+}
 
-    const { error } = await supabase.from('fixtures').upsert(fixtureData, { onConflict: 'external_id' });
-    if (error) console.error('Error upserting:', error.message);
-    else {
-        // Log only significant updates
-        console.log(`[${new Date().toLocaleTimeString()}] ${fixtureData.home_team} ${fixtureData.score} ${fixtureData.away_team} (${fixtureData.minute}')`);
+async function bulkUpsertMatches(matches) {
+    if (!matches || matches.length === 0) return;
+
+    const fixtureDataArray = matches.map(m => prepareMatchData(m));
+
+    const { error } = await supabase
+        .from('fixtures')
+        .upsert(fixtureDataArray, { onConflict: 'external_id' });
+
+    if (error) {
+        console.error('Supabase Bulk Upsert Error:', error.message);
+    } else {
+        console.log(`[${new Date().toLocaleTimeString()}] Upserted ${matches.length} matches.`);
     }
 }
 
@@ -53,21 +62,45 @@ async function syncLive() {
     console.log(`[${new Date().toLocaleTimeString()}] Checking for LIVE matches...`);
 
     try {
+        // 1. Fetch Global Live Matches
         const response = await fetch(`${BASE_URL}/fixtures?live=all`, {
             headers: { 'x-apisports-key': API_KEY }
         });
         const json = await response.json();
+        const liveMatches = json.response || [];
 
-        if (json.response) {
-            const matches = json.response;
-            console.log(`Found ${matches.length} LIVE matches.`);
+        // 2. Identify matches that were LIVE in DB but are missing from Global Live (Finished?)
+        const { data: dbLiveMatches } = await supabase
+            .from('fixtures')
+            .select('external_id')
+            .eq('status', 'LIVE');
 
-            if (matches.length > 0) {
-                await Promise.all(matches.map(m => upsertMatch(m)));
-            }
-        } else {
-            console.error('API Error:', json);
+        const dbLiveIds = new Set((dbLiveMatches || []).map(f => f.external_id));
+        const apiLiveIds = new Set(liveMatches.map(m => m.fixture.id));
+
+        const finishedIds = [...dbLiveIds].filter(id => !apiLiveIds.has(id));
+
+        // 3. Upsert Global Live Matches (Bulk)
+        if (liveMatches.length > 0) {
+            await bulkUpsertMatches(liveMatches);
         }
+
+        // 4. Fetch & Update Finished Matches
+        if (finishedIds.length > 0) {
+            console.log(`Found ${finishedIds.length} matches that just finished.`);
+            // Fetch in batches of 10
+            for (let i = 0; i < finishedIds.length; i += 10) {
+                const batch = finishedIds.slice(i, i + 10).join('-');
+                const url = `${BASE_URL}/fixtures?ids=${batch}`;
+                const res = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
+                const json = await res.json();
+
+                if (json.response && json.response.length > 0) {
+                    await bulkUpsertMatches(json.response);
+                }
+            }
+        }
+
     } catch (error) {
         console.error('Sync Error:', error);
     }
@@ -76,5 +109,5 @@ async function syncLive() {
 // Run immediately
 syncLive();
 
-// Then run every 60 seconds
-setInterval(syncLive, 60 * 1000);
+// Then run every 10 seconds
+setInterval(syncLive, 10 * 1000);

@@ -8,18 +8,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 
-// League IDs (API-Football)
-const LEAGUES = [
-    203, // Süper Lig (TR)
-    39,  // Premier League (EN)
-    140, // La Liga (ES)
-    78,  // Bundesliga (DE)
-    135, // Serie A (IT)
-    61   // Ligue 1 (FR)
-];
-
-// Helper to upsert match into DB
-async function upsertMatch(match) {
+// Helper to prepare match data (Pure function)
+function prepareMatchData(match) {
     const { fixture, teams, goals, league } = match;
     const status = fixture.status;
 
@@ -32,7 +22,7 @@ async function upsertMatch(match) {
     else if (['PST', 'CANC', 'ABD'].includes(shortStatus)) dbStatus = 'CANCELLED';
 
     // Prepare Data
-    const fixtureData = {
+    return {
         id: String(fixture.id), // Use API ID as internal ID (Deterministic & Stable)
         external_id: fixture.id,
         home_team: teams.home.name,
@@ -48,16 +38,20 @@ async function upsertMatch(match) {
         minute: fixture.status.elapsed, // Live minute
         score: dbStatus === 'NOT_STARTED' ? '-' : `${goals.home ?? 0}-${goals.away ?? 0}`,
     };
+}
 
-    // Upsert into DB
+// Bulk Upsert Helper
+async function bulkUpsertMatches(matches) {
+    if (!matches || matches.length === 0) return;
+
+    const fixtureDataArray = matches.map(m => prepareMatchData(m));
+
     const { error } = await supabase
         .from('fixtures')
-        .upsert(fixtureData, { onConflict: 'external_id' });
+        .upsert(fixtureDataArray, { onConflict: 'external_id' });
 
     if (error) {
-        console.error('Supabase Upsert Error:', error.message, fixtureData);
-    } else {
-        // console.log('Imported:', fixtureData.home_team, '-', fixtureData.away_team);
+        console.error('Supabase Bulk Upsert Error:', error.message);
     }
 }
 
@@ -70,9 +64,6 @@ export const BotService = {
             return { success: false, message: 'API Key missing' };
         }
 
-        const today = new Date().toISOString().split('T')[0];
-        const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
-
         let totalImported = 0;
 
         try {
@@ -81,21 +72,19 @@ export const BotService = {
             const liveResponse = await fetch(liveUrl, { headers: { 'x-apisports-key': API_KEY } });
             const liveJson = await liveResponse.json();
 
-            if (liveJson.response) {
-                // Parallel Upsert for Live Matches
-                await Promise.all(liveJson.response.map(match => upsertMatch(match)));
+            if (liveJson.response && liveJson.response.length > 0) {
+                await bulkUpsertMatches(liveJson.response);
                 totalImported += liveJson.response.length;
             }
 
             // STRATEGY 2: Fetch Global Schedule for Yesterday, Today & Next 3 Days
-            // We fetch ALL matches for the given dates. No league filtering.
             const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
             const today = new Date().toISOString().split('T')[0];
             const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
             const dayAfterTomorrow = new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().split('T')[0];
             const threeDaysLater = new Date(new Date().setDate(new Date().getDate() + 3)).toISOString().split('T')[0];
 
-            const datesToFetch = [yesterday, today, tomorrow, dayAfterTomorrow, threeDaysLater]; // Fetch wider range
+            const datesToFetch = [yesterday, today, tomorrow, dayAfterTomorrow, threeDaysLater];
 
             for (const date of datesToFetch) {
                 const url = `${BASE_URL}/fixtures?date=${date}`;
@@ -113,7 +102,7 @@ export const BotService = {
                 const batchSize = 50;
                 for (let i = 0; i < matches.length; i += batchSize) {
                     const batch = matches.slice(i, i + batchSize);
-                    await Promise.all(batch.map(m => upsertMatch(m)));
+                    await bulkUpsertMatches(batch);
                 }
 
                 totalImported += matches.length;
@@ -128,7 +117,7 @@ export const BotService = {
 
     // 2. Update Odds (Periodically)
     updateOdds: async () => {
-        if (!API_KEY) return { success: false, message: 'API Key missing' };
+        if (!process.env.NEXT_PUBLIC_API_FOOTBALL_KEY) return { success: false, message: 'API Key missing' };
 
         // Get upcoming matches from DB
         const { data: fixtures } = await supabase
@@ -143,7 +132,7 @@ export const BotService = {
         for (const f of fixtures || []) {
             try {
                 const response = await fetch(`${BASE_URL}/odds?fixture=${f.external_id}`, {
-                    headers: { 'x-apisports-key': API_KEY }
+                    headers: { 'x-apisports-key': process.env.NEXT_PUBLIC_API_FOOTBALL_KEY }
                 });
                 const json = await response.json();
 
@@ -208,6 +197,7 @@ export const BotService = {
 
     // 3. Check Results (Live Scores & Finalize Finished Matches)
     checkResults: async () => {
+        const API_KEY = process.env.NEXT_PUBLIC_API_FOOTBALL_KEY;
         if (!API_KEY) return { success: false, message: 'API Key missing' };
 
         // 1. Get matches that are currently LIVE in our DB
@@ -215,9 +205,6 @@ export const BotService = {
             .from('fixtures')
             .select('external_id')
             .eq('status', 'LIVE');
-
-        // 2. Also fetch global live matches to catch NEWLY started games
-        // But to be robust, let's just fetch the specific IDs of our LIVE matches + Global Live
 
         let idsToUpdate = new Set();
         if (liveFixtures) liveFixtures.forEach(f => idsToUpdate.add(f.external_id));
@@ -235,25 +222,15 @@ export const BotService = {
             // If we have nothing to update, return
             if (idsToUpdate.size === 0) return { success: true, message: 'No live matches to sync.' };
 
-            // 3. Fetch details for ALL these IDs (Batching if needed)
-            // API-Football allows up to 20 IDs per call usually, or we can just loop.
-            // For safety and simplicity in this context, let's loop or use Promise.all
-            // But wait, we can just use the `upsertMatch` function for each!
-
-            // We need to fetch the *latest* data for these IDs. 
-            // The `globalLive` array already has data for currently live ones.
-            // But for those in `idsToUpdate` that are NOT in `globalLive` (meaning they just finished),
-            // we need to fetch them individually.
-
             const liveMap = new Map(globalLive.map(m => [m.fixture.id, m]));
             const missingIds = [...idsToUpdate].filter(id => !liveMap.has(id));
 
             let updatedCount = 0;
 
-            // Update from Global Live response (Fast)
-            for (const match of globalLive) {
-                await upsertMatch(match);
-                updatedCount++;
+            // Update from Global Live response (Fast) - Bulk Upsert
+            if (globalLive.length > 0) {
+                await bulkUpsertMatches(globalLive);
+                updatedCount += globalLive.length;
             }
 
             // Fetch & Update "Missing" matches (Those that were LIVE but now Finished)
@@ -265,11 +242,9 @@ export const BotService = {
                     const res = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
                     const json = await res.json();
 
-                    if (json.response) {
-                        for (const match of json.response) {
-                            await upsertMatch(match);
-                            updatedCount++;
-                        }
+                    if (json.response && json.response.length > 0) {
+                        await bulkUpsertMatches(json.response);
+                        updatedCount += json.response.length;
                     }
                 }
             }
