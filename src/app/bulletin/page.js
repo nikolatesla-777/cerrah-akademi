@@ -210,13 +210,24 @@ export default function BulletinPage() {
                                                 </div>
                                             )}
                                         </div>
-
+                                        <div className="team away">
+                                            {match.away_team_logo && <img src={match.away_team_logo} alt="" className="team-logo" />}
+                                            <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
+                                                {match.away_team}
+                                            </span>
+                                        </div>
                                         <div className="match-actions-col">
                                             {/* Future: Add Odds Button Here */}
                                         </div>
                                     </div>
-                                );
-                            })}
+                                    <button
+                                        className={`favorite-btn ${favorites.includes(match.id) ? 'active' : ''}`}
+                                        onClick={() => toggleFavorite(match.id)}
+                                    >
+                                        ★
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     ))
                 )}
@@ -323,6 +334,24 @@ export default function BulletinPage() {
                     text-transform: uppercase;
                 }
 
+                .league-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .country-flag {
+                    width: 20px;
+                    height: 15px;
+                    object-fit: cover;
+                    border-radius: 2px;
+                }
+
+                .country-name {
+                    color: #94a3b8;
+                    font-weight: 600;
+                }
+
                 .league-logo {
                     width: 20px;
                     height: 20px;
@@ -345,6 +374,7 @@ export default function BulletinPage() {
                     padding: 0.75rem 1rem;
                     border-bottom: 1px solid #334155;
                     transition: background 0.2s;
+                    position: relative;
                 }
 
                 .match-row:last-child {
@@ -359,11 +389,10 @@ export default function BulletinPage() {
                     background: rgba(251, 191, 36, 0.05);
                 }
 
-                .match-status-col {
-                    width: 70px;
+                .match-status {
+                    width: 60px;
                     display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
+                    justify-content: center;
                     font-size: 0.8rem;
                     color: #94a3b8;
                 }
@@ -391,20 +420,31 @@ export default function BulletinPage() {
                     100% { opacity: 1; }
                 }
 
-                .match-teams-col {
+                .match-teams {
                     flex: 1;
                     display: flex;
-                    flex-direction: column;
-                    gap: 0.25rem;
+                    align-items: center;
+                    justify-content: space-between;
                     padding: 0 1rem;
                 }
 
                 .team {
+                    flex: 1;
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
                     font-size: 0.95rem;
                     color: #e2e8f0;
+                }
+
+                .team.home {
+                    justify-content: flex-end;
+                    text-align: right;
+                }
+
+                .team.away {
+                    justify-content: flex-start;
+                    text-align: left;
                 }
                 
                 .team.winner {
@@ -413,30 +453,40 @@ export default function BulletinPage() {
                 }
 
                 .team-logo {
-                    width: 16px;
-                    height: 16px;
+                    width: 20px;
+                    height: 20px;
                     object-fit: contain;
                 }
 
-                .match-score-col {
-                    width: 50px;
+                .match-score {
+                    width: 60px;
                     display: flex;
                     justify-content: center;
-                    align-items: center;
                     font-weight: 700;
                     color: #22c55e;
                 }
 
                 .score-box {
                     display: flex;
-                    flex-direction: row;
-                    align-items: center;
                     gap: 0.25rem;
-                    font-size: 0.95rem;
                 }
                 
                 .live-score {
                     color: #ef4444;
+                }
+
+                .favorite-btn {
+                    background: none;
+                    border: none;
+                    color: #475569;
+                    font-size: 1.2rem;
+                    cursor: pointer;
+                    padding: 0.2rem;
+                    margin-left: 0.5rem;
+                }
+
+                .favorite-btn:hover, .favorite-btn.active {
+                    color: #fbbf24;
                 }
 
                 .loading, .empty-state {
@@ -446,5 +496,5 @@ export default function BulletinPage() {
                 }
             `}</style>
         </div>
-            );
+    );
 }
