@@ -42,7 +42,7 @@ export default function BulletinPage() {
 
         const { data, error } = await supabase
             .from('fixtures')
-            .select('*')
+            .select('*, country, country_flag')
             .gte('match_time', startOfDay.toISOString())
             .lte('match_time', endOfDay.toISOString())
             .range(0, 4999) // Bypass default 1000 row limit
@@ -345,6 +345,8 @@ export default function BulletinPage() {
                     height: 15px;
                     object-fit: cover;
                     border-radius: 2px;
+                    background-color: #334155; /* Placeholder color */
+                    margin-right: 0.5rem;
                 }
 
                 .country-name {
