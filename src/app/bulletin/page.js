@@ -173,111 +173,117 @@ export default function BulletinPage() {
                             </div>
                             <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
                         </div>
+
+                        {(activeTab === 'LIVE' || activeTab === 'ALL') && (
+                            <div className="sort-controls">
+                                <button
+                                    className={`sort-btn ${sortOption === 'LEAGUE' ? 'active' : ''}`}
+                                    onClick={() => setSortOption('LEAGUE')}
+                                >
+                                    Lige Göre
+                                </button>
+                                <button
+                                    className={`sort-btn ${sortOption === 'TIME' ? 'active' : ''}`}
+                                    onClick={() => setSortOption('TIME')}
+                                >
+                                    Saate Göre
+                                </button>
+                            </div>
+                        )}
                     </div>
+
+                    <div className="tabs">
+                        {['ALL', 'LIVE', 'FINISHED', 'FAVORITES'].map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                            >
+                                {tab === 'ALL' && 'TÜMÜ'}
+                                {tab === 'LIVE' && 'CANLI'}
+                                {tab === 'FINISHED' && 'BİTENLER'}
+                                {tab === 'FAVORITES' && 'FAVORİLER'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Match List */}
+                <div className="matches-list">
+                    {loading ? (
+                        <div className="loading">Yükleniyor...</div>
+                    ) : sortedGroups.length === 0 ? (
+                        <div className="empty-state">Maç bulunamadı.</div>
+                    ) : (
+                        sortedGroups.map((group) => (
+                            <div key={group.id} className="league-group">
+                                <div className="league-header">
+                                    <div className="league-info">
+                                        {group.flag && <img src={group.flag} alt={group.country} className="country-flag" />}
+                                        <span className="country-name">{group.country && group.country !== 'Dünya' ? group.country.toUpperCase() + ' - ' : ''}</span>
+                                        <span className="league-name">{group.league}</span>
+                                    </div>
+                                </div>
+                                {group.matches.map((match) => (
+                                    <div key={match.id} className={`match-row ${favorites.includes(match.id) ? 'favorite-row' : ''}`}>
+                                        <div className="match-status">
+                                            {match.status === 'LIVE' ? (
+                                                <span className="live-minute">{match.minute}'</span>
+                                            ) : match.status === 'FINISHED' ? (
+                                                <span className="finished">MS</span>
+                                            ) : (
+                                                <span className="time">
+                                                    {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="match-teams">
+                                            <div className="team home">
+                                                <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
+                                                    {match.home_team}
+                                                </span>
+                                                {match.home_team_logo && <img src={match.home_team_logo} alt="" className="team-logo" />}
+                                            </div>
+                                            <div className="match-score">
+                                                {match.status === 'NOT_STARTED' ? (
+                                                    <span className="vs">-</span>
+                                                ) : (
+                                                    <div className="score-box">
+                                                        <span className={`score-home ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[0]}</span>
+                                                        <span className="score-divider">-</span>
+                                                        <span className={`score-away ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[1]}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="team away">
+                                                {match.away_team_logo && <img src={match.away_team_logo} alt="" className="team-logo" />}
+                                                <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
+                                                    {match.away_team}
+                                                </span>
+                                            </div>
+                                            <div className="match-actions-col">
+                                                {/* Future: Add Odds Button Here */}
+                                            </div>
+                                        </div>
+                                        <button
+                                            className={`favorite-btn ${favorites.includes(match.id) ? 'active' : ''}`}
+                                            onClick={() => toggleFavorite(match.id)}
+                                        >
+                                            ★
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ))
                     )}
                 </div>
 
-                <div className="tabs">
-                    {['ALL', 'LIVE', 'FINISHED', 'FAVORITES'].map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-                        >
-                            {tab === 'ALL' && 'TÜMÜ'}
-                            {tab === 'LIVE' && 'CANLI'}
-                            {tab === 'FINISHED' && 'BİTENLER'}
-                            {tab === 'FAVORITES' && 'FAVORİLER'}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Match List */ }
-            <div className="matches-list">
-                {loading ? (
-                    <div className="loading">Yükleniyor...</div>
-                ) : sortedGroups.length === 0 ? (
-                    <div className="empty-state">Maç bulunamadı.</div>
-                ) : (
-                    sortedGroups.map((group) => (
-                        <div key={group.id} className="league-group">
-                            <div className="league-header">
-                                <div className="league-info">
-                                    {group.flag && <img src={group.flag} alt={group.country} className="country-flag" />}
-                                    <span className="country-name">{group.country && group.country !== 'Dünya' ? group.country.toUpperCase() + ' - ' : ''}</span>
-                                    <span className="league-name">{group.league}</span>
-                                </div>
-                            </div>
-                            {group.matches.map((match) => (
-                                <div key={match.id} className={`match-row ${favorites.includes(match.id) ? 'favorite-row' : ''}`}>
-                                    <div className="match-status">
-                                        {match.status === 'LIVE' ? (
-                                            <span className="live-minute">{match.minute}'</span>
-                                        ) : match.status === 'FINISHED' ? (
-                                            <span className="finished">MS</span>
-                                        ) : (
-                                            <span className="time">
-                                                {new Date(match.match_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="match-teams">
-                                        <div className="team home">
-                                            <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[0]) > parseInt(match.score.split('-')[1]) ? 'winner' : ''}`}>
-                                                {match.home_team}
-                                            </span>
-                                            {match.home_team_logo && <img src={match.home_team_logo} alt="" className="team-logo" />}
-                                        </div>
-                                        <div className="match-score">
-                                            {match.status === 'NOT_STARTED' ? (
-                                                <span className="vs">-</span>
-                                            ) : (
-                                                <div className="score-box">
-                                                    <span className={`score-home ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[0]}</span>
-                                                    <span className="score-divider">-</span>
-                                                    <span className={`score-away ${match.status === 'LIVE' ? 'live-score' : ''}`}>{match.score.split('-')[1]}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="team away">
-                                            {match.away_team_logo && <img src={match.away_team_logo} alt="" className="team-logo" />}
-                                            <span className={`team-name ${match.score && match.score !== '-' && parseInt(match.score.split('-')[1]) > parseInt(match.score.split('-')[0]) ? 'winner' : ''}`}>
-                                                {match.away_team}
-                                            </span>
-                                        </div>
-                                        <div className="match-actions-col">
-                                            {/* Future: Add Odds Button Here */}
-                                        </div>
-                                    </div>
-                                    <button
-                                        className={`favorite-btn ${favorites.includes(match.id) ? 'active' : ''}`}
-                                        onClick={() => toggleFavorite(match.id)}
-                                    >
-                                        ★
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ))
-                )}
-            </div>
-
-            <style jsx>{`
+                <style jsx>{`
                 .bulletin-container {
                     background-color: #0f172a;
                     min-height: 100vh;
                     color: #e2e8f0;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                }
-
-                .bulletin-header {
-                    background-color: #1e293b;
-                    padding: 1rem;
-                    position: sticky;
-                    top: 0;
-                    z-index: 10;
-                    border-bottom: 1px solid #334155;
                 }
 
                 .bulletin-header {
@@ -571,6 +577,6 @@ export default function BulletinPage() {
                     color: #94a3b8;
                 }
             `}</style>
-        </div >
-    );
-}
+            </div>
+        );
+    }
