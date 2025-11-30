@@ -199,49 +199,78 @@ export const BotService = {
         return { success: true, message: `Updated odds for ${updatedCount} matches.` };
     },
 
-    // 3. Check Results (Live Scores)
+    // 3. Check Results (Live Scores & Finalize Finished Matches)
     checkResults: async () => {
         if (!API_KEY) return { success: false, message: 'API Key missing' };
 
-        // Get LIVE or recently started matches
-        const { data: fixtures } = await supabase
+        // 1. Get matches that are currently LIVE in our DB
+        const { data: liveFixtures } = await supabase
             .from('fixtures')
             .select('external_id')
-            .or('status.eq.LIVE,status.eq.NOT_STARTED')
-            .not('external_id', 'is', null);
+            .eq('status', 'LIVE');
 
-        // API-Football allows fetching multiple ids: id=1-2-3
-        // But let's do simple loop for now or use the 'live' endpoint
+        // 2. Also fetch global live matches to catch NEWLY started games
+        // But to be robust, let's just fetch the specific IDs of our LIVE matches + Global Live
 
-        // Better approach: Fetch ALL live matches from API and update matching ones in DB
+        let idsToUpdate = new Set();
+        if (liveFixtures) liveFixtures.forEach(f => idsToUpdate.add(f.external_id));
+
+        // Fetch Global Live to find new games
         try {
-            const response = await fetch(`${BASE_URL}/fixtures?live=all`, {
+            const liveResponse = await fetch(`${BASE_URL}/fixtures?live=all`, {
                 headers: { 'x-apisports-key': API_KEY }
             });
-            const json = await response.json();
-            const liveMatches = json.response || [];
+            const liveJson = await liveResponse.json();
+            const globalLive = liveJson.response || [];
+
+            globalLive.forEach(m => idsToUpdate.add(m.fixture.id));
+
+            // If we have nothing to update, return
+            if (idsToUpdate.size === 0) return { success: true, message: 'No live matches to sync.' };
+
+            // 3. Fetch details for ALL these IDs (Batching if needed)
+            // API-Football allows up to 20 IDs per call usually, or we can just loop.
+            // For safety and simplicity in this context, let's loop or use Promise.all
+            // But wait, we can just use the `upsertMatch` function for each!
+
+            // We need to fetch the *latest* data for these IDs. 
+            // The `globalLive` array already has data for currently live ones.
+            // But for those in `idsToUpdate` that are NOT in `globalLive` (meaning they just finished),
+            // we need to fetch them individually.
+
+            const liveMap = new Map(globalLive.map(m => [m.fixture.id, m]));
+            const missingIds = [...idsToUpdate].filter(id => !liveMap.has(id));
 
             let updatedCount = 0;
 
-            for (const match of liveMatches) {
-                const { fixture, goals, status } = match;
-
-                // Only update if we have this match in our DB
-                const { error } = await supabase
-                    .from('fixtures')
-                    .update({
-                        score: `${goals.home}-${goals.away}`,
-                        status: 'LIVE',
-                        minute: fixture.status.elapsed
-                    })
-                    .eq('external_id', fixture.id);
-
-                if (!error) updatedCount++;
+            // Update from Global Live response (Fast)
+            for (const match of globalLive) {
+                await upsertMatch(match);
+                updatedCount++;
             }
 
-            return { success: true, message: `Synced ${updatedCount} live matches.` };
+            // Fetch & Update "Missing" matches (Those that were LIVE but now Finished)
+            if (missingIds.length > 0) {
+                // Fetch in batches of 10
+                for (let i = 0; i < missingIds.length; i += 10) {
+                    const batch = missingIds.slice(i, i + 10).join('-');
+                    const url = `${BASE_URL}/fixtures?ids=${batch}`;
+                    const res = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
+                    const json = await res.json();
+
+                    if (json.response) {
+                        for (const match of json.response) {
+                            await upsertMatch(match);
+                            updatedCount++;
+                        }
+                    }
+                }
+            }
+
+            return { success: true, message: `Synced ${updatedCount} matches (Live & Recently Finished).` };
 
         } catch (error) {
+            console.error('Check Results Error:', error);
             return { success: false, message: error.message };
         }
     }
