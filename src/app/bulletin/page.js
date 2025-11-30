@@ -63,10 +63,13 @@ export default function BulletinPage() {
 
         // 2. Date Filter
         if (activeTab !== 'LIVE') { // Don't filter by date if looking at LIVE tab
-            const selDateStr = selectedDate.toISOString().split('T')[0];
+            // Fix: Use local date string comparison to avoid UTC mismatch
+            const selDateStr = selectedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+
             filtered = filtered.filter(f => {
                 if (!f.match_time) return false;
-                const matchDateStr = new Date(f.match_time).toISOString().split('T')[0];
+                const matchDate = new Date(f.match_time);
+                const matchDateStr = matchDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
                 return matchDateStr === selDateStr;
             });
         }
