@@ -82,120 +82,98 @@ export default function BulletinPage() {
         const filtered = filterFixtures();
 
         if ((activeTab === 'LIVE' || activeTab === 'ALL') && sortOption === 'TIME') {
-            // Sort by Minute Descending (Live) or Time Ascending (All)
-            const sortedMatches = [...filtered].sort((a, b) => {
-                // 1. Favorites First
-                const aFav = favorites.includes(a.id);
-                const bFav = favorites.includes(b.id);
-                if (aFav && !bFav) return -1;
-                if (!aFav && bFav) return 1;
+            if (sortOption === 'TIME') {
+                const favs = filtered.filter(f => favorites.includes(f.id));
+                const others = filtered.filter(f => !favorites.includes(f.id));
 
-                // 2. Time Sort
-                if (activeTab === 'LIVE') {
-                    const minA = parseInt(a.minute) || 0;
-                    const minB = parseInt(b.minute) || 0;
-                    return minB - minA;
-                } else {
-                    return new Date(a.match_time) - new Date(b.match_time);
-                }
-            });
-
-            if (sortedMatches.length === 0) return [];
-
-            return [{
-                id: 'sorted-list',
-                country: activeTab === 'LIVE' ? 'Canlı' : 'Tümü',
-                flag: null,
-                league: activeTab === 'LIVE' ? 'Dakikaya Göre Sıralı' : 'Saate Göre Sıralı',
-                logo: null,
-                matches: sortedMatches
-            }];
-        }
-
-        // Default: Group by League
-        const grouped = filtered.reduce((acc, fixture) => {
-            // Group by Country + League to avoid ambiguity (e.g. 'Cup' in multiple countries)
-            const country = fixture.country || 'Dünya';
-            const league = fixture.league || 'Diğer';
-            const groupKey = `${country}-${league}`;
-
-            if (!acc[groupKey]) {
-                acc[groupKey] = {
-                    id: groupKey,
-                    country: fixture.country,
-                    flag: fixture.country_flag,
-                    league: fixture.league,
-                    logo: fixture.league_logo,
-                    matches: []
+                const sortFn = (a, b) => {
+                    if (activeTab === 'LIVE') {
+                        // Sort by Minute Descending
+                        const minA = parseInt(a.minute) || 0;
+                        const minB = parseInt(b.minute) || 0;
+                        return minB - minA;
+                    } else {
+                        // Sort by Match Time Ascending
+                        return new Date(a.match_time) - new Date(b.match_time);
+                    }
                 };
+
+                favs.sort(sortFn);
+                others.sort(sortFn);
+
+                const sortedMatches = [...favs, ...others];
+
+                if (sortedMatches.length === 0) return [];
+
+                return [{
+                    id: 'sorted-by-time',
+                    country: activeTab === 'LIVE' ? 'Canlı' : 'Tümü',
+                    flag: null,
+                    league: 'Saate Göre Sıralı',
+                    logo: null,
+                    matches: sortedMatches
+                }];
             }
-            acc[groupKey].matches.push(fixture);
-            return acc;
-        }, {});
 
-        // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
-        return Object.values(grouped).map(group => {
-            // Sort matches within group: Favorites first, then Time
-            group.matches.sort((a, b) => {
-                const aFav = favorites.includes(a.id);
-                const bFav = favorites.includes(b.id);
-                if (aFav && !bFav) return -1;
-                if (!aFav && bFav) return 1;
-                return new Date(a.match_time) - new Date(b.match_time);
+            // Default: Group by League
+            const grouped = filtered.reduce((acc, fixture) => {
+                // Group by Country + League to avoid ambiguity (e.g. 'Cup' in multiple countries)
+                const country = fixture.country || 'Dünya';
+                const league = fixture.league || 'Diğer';
+                const groupKey = `${country}-${league}`;
+
+                if (!acc[groupKey]) {
+                    acc[groupKey] = {
+                        id: groupKey,
+                        country: fixture.country,
+                        flag: fixture.country_flag,
+                        league: fixture.league,
+                        logo: fixture.league_logo,
+                        matches: []
+                    };
+                }
+                acc[groupKey].matches.push(fixture);
+                return acc;
+            }, {});
+
+            // Sort leagues: Favorites first, then Priority Leagues (optional), then A-Z
+            return Object.values(grouped).sort((a, b) => {
+                const aHasFav = a.matches.some(m => favorites.includes(m.id));
+                const bHasFav = b.matches.some(m => favorites.includes(m.id));
+                if (aHasFav && !bHasFav) return -1;
+                if (!aHasFav && bHasFav) return 1;
+
+                // Secondary sort: Country Name
+                if (a.country < b.country) return -1;
+                if (a.country > b.country) return 1;
+
+                return 0;
             });
-            return group;
-        }).sort((a, b) => {
-            const aHasFav = a.matches.some(m => favorites.includes(m.id));
-            const bHasFav = b.matches.some(m => favorites.includes(m.id));
-            if (aHasFav && !bHasFav) return -1;
-            if (!aHasFav && bHasFav) return 1;
+        };
 
-            // Secondary sort: Country Name
-            if (a.country < b.country) return -1;
-            if (a.country > b.country) return 1;
+        const sortedGroups = getSortedGroups();
 
-            return 0;
-        });
-    };
+        const changeDate = (days) => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() + days);
+            setSelectedDate(newDate);
+            // fetchFixtures is triggered by useEffect dependency
+        };
 
-    const sortedGroups = getSortedGroups();
-
-    const changeDate = (days) => {
-        const newDate = new Date(selectedDate);
-        newDate.setDate(newDate.getDate() + days);
-        setSelectedDate(newDate);
-        // fetchFixtures is triggered by useEffect dependency
-    };
-
-    return (
-        <div className="bulletin-container">
-            {/* Header / Date Navigation */}
-            <div className="bulletin-header">
-                <div className="header-top">
-                    <div className="date-nav">
-                        <button onClick={() => changeDate(-1)} className="nav-btn">◀</button>
-                        <div className="current-date">
-                            <span className="day">{selectedDate.toLocaleDateString('tr-TR', { weekday: 'long' })}</span>
-                            <span className="full-date">{selectedDate.toLocaleDateString('tr-TR')}</span>
+        return (
+            <div className="bulletin-container">
+                {/* Header / Date Navigation */}
+                <div className="bulletin-header">
+                    <div className="header-top">
+                        <div className="date-nav">
+                            <button onClick={() => changeDate(-1)} className="nav-btn">◀</button>
+                            <div className="current-date">
+                                <span className="day">{selectedDate.toLocaleDateString('tr-TR', { weekday: 'long' })}</span>
+                                <span className="full-date">{selectedDate.toLocaleDateString('tr-TR')}</span>
+                            </div>
+                            <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
                         </div>
-                        <button onClick={() => changeDate(1)} className="nav-btn">▶</button>
                     </div>
-
-                    {(activeTab === 'LIVE' || activeTab === 'ALL') && (
-                        <div className="sort-controls">
-                            <button
-                                className={`sort-btn ${sortOption === 'LEAGUE' ? 'active' : ''}`}
-                                onClick={() => setSortOption('LEAGUE')}
-                            >
-                                Lige Göre
-                            </button>
-                            <button
-                                className={`sort-btn ${sortOption === 'TIME' ? 'active' : ''}`}
-                                onClick={() => setSortOption('TIME')}
-                            >
-                                Saate Göre
-                            </button>
-                        </div>
                     )}
                 </div>
 
@@ -215,7 +193,7 @@ export default function BulletinPage() {
                 </div>
             </div>
 
-            {/* Match List */}
+            {/* Match List */ }
             <div className="matches-list">
                 {loading ? (
                     <div className="loading">Yükleniyor...</div>
@@ -593,6 +571,6 @@ export default function BulletinPage() {
                     color: #94a3b8;
                 }
             `}</style>
-        </div>
+        </div >
     );
 }
