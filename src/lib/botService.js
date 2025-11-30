@@ -324,14 +324,16 @@ export const BotService = {
                 const leagueId = f.league.id;
                 const season = f.league.season;
 
-                // Fetch H2H and Standings
+                // Fetch H2H, Standings, and Events
                 const pH2H = fetch(`${BASE_URL}/fixtures/headtohead?h2h=${homeId}-${awayId}`, { headers }).then(r => r.json());
                 const pStandings = fetch(`${BASE_URL}/standings?league=${leagueId}&season=${season}`, { headers }).then(r => r.json());
+                const pEvents = fetch(`${BASE_URL}/fixtures/events?fixture=${fixtureId}`, { headers }).then(r => r.json());
 
-                const [h2hRes, standingsRes] = await Promise.all([pH2H, pStandings]);
+                const [h2hRes, standingsRes, eventsRes] = await Promise.all([pH2H, pStandings, pEvents]);
 
                 if (h2hRes.response) updates.h2h = h2hRes.response;
                 if (standingsRes.response) updates.standings = standingsRes.response;
+                if (eventsRes.response) updates.events = eventsRes.response;
             }
 
             // Update DB
